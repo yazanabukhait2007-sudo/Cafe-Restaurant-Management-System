@@ -1,0 +1,269 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  password      String
+  name          String
+  roleId        String
+  role          Role      @relation(fields: [roleId], references: [id])
+  employee      Employee?
+  sessions      Session[]
+  activityLogs  ActivityLog[]
+  notifications Notification[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Role {
+  id          String       @id @default(cuid())
+  name        String       @unique // Owner, Manager, Cashier, Waiter, Kitchen, Bar, Accountant
+  permissions Permission[]
+  users       User[]
+  createdAt   DateTime     @default(now())
+}
+
+model Permission {
+  id    String @id @default(cuid())
+  name  String @unique // e.g. "orders:create", "inventory:manage"
+  roles Role[]
+}
+
+model Employee {
+  id               String       @id @default(cuid())
+  userId           String       @unique
+  user             User         @relation(fields: [userId], references: [id])
+  position         String
+  hourlyRate       Float
+  hireDate         DateTime     @default(now())
+  attendance       Attendance[]
+  shifts           Shift[]
+  managedOrders    Order[]      @relation("WaiterOrders")
+  kitchenOrders    Order[]      @relation("KitchenStaff")
+}
+
+model Attendance {
+  id          String   @id @default(cuid())
+  employeeId  String
+  employee    Employee @relation(fields: [employeeId], references: [id])
+  clockIn     DateTime @default(now())
+  clockOut    DateTime?
+  totalHours  Float?
+  createdAt   DateTime @default(now())
+}
+
+model Shift {
+  id          String   @id @default(cuid())
+  employeeId  String
+  employee    Employee @relation(fields: [employeeId], references: [id])
+  startTime   DateTime
+  endTime     DateTime
+  status      String   // Scheduled, Completed, Cancelled
+  createdAt   DateTime @default(now())
+}
+
+model Table {
+  id           String        @id @default(cuid())
+  number       String        @unique
+  capacity     Int
+  status       String        @default("Available") // Available, Occupied, Reserved, Cleaning
+  reservations Reservation[]
+  orders       Order[]
+  createdAt    DateTime      @default(now())
+}
+
+model Reservation {
+  id          String   @id @default(cuid())
+  tableId     String
+  table       Table    @relation(fields: [tableId], references: [id])
+  customerName String
+  customerPhone String
+  startTime   DateTime
+  endTime     DateTime?
+  status      String   // Pending, Confirmed, Completed, Cancelled
+  createdAt   DateTime @default(now())
+}
+
+model Order {
+  id              String      @id @default(cuid())
+  tableId         String?
+  table           Table?      @relation(fields: [tableId], references: [id])
+  waiterId        String?
+  waiter          Employee?   @relation("WaiterOrders", fields: [waiterId], references: [id])
+  kitchenStaffId  String?
+  kitchenStaff    Employee?   @relation("KitchenStaff", fields: [kitchenStaffId], references: [id])
+  status          String      @default("New") // New, Preparing, Ready, Delivered, Completed, Cancelled
+  type            String      @default("DineIn") // DineIn, Takeaway, Delivery
+  notes           String?
+  subtotal        Float
+  taxAmount       Float
+  discountAmount  Float       @default(0)
+  total           Float
+  items           OrderItem[]
+  payments        Payment[]
+  couponId        String?
+  coupon          Coupon?     @relation(fields: [couponId], references: [id])
+  cashierSessionId String?
+  cashierSession  CashierSession? @relation(fields: [cashierSessionId], references: [id])
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+}
+
+model OrderItem {
+  id              String         @id @default(cuid())
+  orderId         String
+  order           Order          @relation(fields: [orderId], references: [id])
+  productId       String
+  product         Product        @relation(fields: [productId], references: [id])
+  productVariantId String?
+  productVariant  ProductVariant? @relation(fields: [productVariantId], references: [id])
+  quantity        Int
+  unitPrice       Float
+  totalPrice      Float
+  notes           String?
+  status          String         @default("Pending") // Pending, Preparing, Ready, Served
+  createdAt       DateTime       @default(now())
+}
+
+model Category {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  image       String?
+  products    Product[]
+  createdAt   DateTime  @default(now())
+}
+
+model Product {
+  id          String           @id @default(cuid())
+  categoryId  String
+  category    Category         @relation(fields: [categoryId], references: [id])
+  name        String
+  description String?
+  price       Float
+  image       String?
+  isAvailable Boolean          @default(true)
+  variants    ProductVariant[]
+  orderItems  OrderItem[]
+  ingredients Ingredient[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+}
+
+model ProductVariant {
+  id          String      @id @default(cuid())
+  productId   String
+  product     Product     @relation(fields: [productId], references: [id])
+  name        String      // Small, Medium, Large, Spicy, etc.
+  price       Float
+  orderItems  OrderItem[]
+  createdAt   DateTime    @default(now())
+}
+
+model Ingredient {
+  id            String                 @id @default(cuid())
+  name          String                 @unique
+  unit          String                 // gram, ml, unit
+  currentStock  Float                  @default(0)
+  lowStockLevel Float                  @default(10)
+  products      Product[]
+  transactions  InventoryTransaction[]
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+}
+
+model InventoryTransaction {
+  id           String     @id @default(cuid())
+  ingredientId String?
+  ingredient   Ingredient? @relation(fields: [ingredientId], references: [id])
+  type         String     // Purchase, Consumption, Wastage, Adjustment
+  quantity     Float
+  note         String?
+  createdAt    DateTime   @default(now())
+}
+
+model Coupon {
+  id              String   @id @default(cuid())
+  code            String   @unique
+  discountType    String   // Percentage, FixedAmount
+  discountValue   Float
+  minOrderAmount  Float?
+  maxDiscount     Float?
+  expiryDate      DateTime
+  usageLimit      Int?
+  usedCount       Int      @default(0)
+  orders          Order[]
+  createdAt       DateTime @default(now())
+}
+
+model Payment {
+  id            String   @id @default(cuid())
+  orderId       String
+  order         Order    @relation(fields: [orderId], references: [id])
+  amount        Float
+  method        String   // Cash, Card
+  status        String   // Completed, Refunded
+  transactionId String?
+  createdAt     DateTime @default(now())
+}
+
+model CashierSession {
+  id           String    @id @default(cuid())
+  userId       String
+  openingTime  DateTime  @default(now())
+  closingTime  DateTime?
+  openingBalance Float
+  closingBalance Float?
+  totalRevenue Float     @default(0)
+  orders       Order[]
+  status       String    @default("Open") // Open, Closed
+  createdAt    DateTime  @default(now())
+}
+
+model ActivityLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  action    String
+  module    String
+  details   String?
+  ipAddress String?
+  createdAt DateTime @default(now())
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  title     String
+  message   String
+  isRead    Boolean  @default(false)
+  type      String   // Info, Warning, Alert
+  createdAt DateTime @default(now())
+}
+
+model Setting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  group     String   // System, Cafe, UI, Finance
+  updatedAt DateTime @updatedAt
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id])
+  refreshToken String   @unique
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+}

@@ -1,0 +1,6 @@
+{
+  "name": "Cafe & Restaurant Management System",
+  "description": "A production-grade, enterprise-level cafe and restaurant management system with real-time orders, inventory, and POS.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
