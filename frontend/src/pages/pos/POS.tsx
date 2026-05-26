@@ -39,8 +39,12 @@ export default function POSPage() {
   const { waterPricePerGuest, taxRate, cafeName } = useSettingsStore();
 
   const [currentOrder, setCurrentOrder] = useState<any[]>(() => {
+    // Check if table already has an active order or is occupied
+    const targetTable = usePosStore.getState().tables.find(t => t.name === tableData?.tableName);
+    const isActuallyExistingOrder = tableData?.existingOrder || (targetTable && (targetTable.status === 'occupied' || (targetTable.activeOrder && targetTable.activeOrder.length > 0)));
+
     // Add water charge automatically if new table and water price is configured
-    if (tableData?.guests && !tableData?.existingOrder && waterPricePerGuest > 0) {
+    if (tableData?.guests && !isActuallyExistingOrder && waterPricePerGuest > 0) {
       return [{
         id: `new_${Date.now()}_water`,
         productId: WATER_PRODUCT_ID,

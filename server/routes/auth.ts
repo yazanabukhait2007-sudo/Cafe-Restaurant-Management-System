@@ -2,13 +2,23 @@ import express from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { prisma } from "../lib/prisma.ts";
+import { validate } from "../middleware/validate.ts";
+import { rateLimit } from "../middleware/rateLimit.ts";
+import { loginSchema, refreshTokenSchema } from "../validation/schemas.ts";
 
 const router = express.Router();
 
 const ACCESS_SECRET = process.env.JWT_ACCESS_SECRET || "your-access-token-secret-change-in-prod";
 const REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || "your-refresh-token-secret-change-in-prod";
 
-router.post("/login", async (req, res) => {
+// Rate limiting specifically to prevent login brute force attacks
+const loginLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute window
+  max: 10,                 // Max 10 login requests per client IP per min
+  message: "Too many login attempts. Please try again after one minute.",
+});
+
+router.post("/login", loginLimiter, validate({ body: loginSchema }), async (req, res) => {
   const { email, password } = req.body;
 
   try {
@@ -71,7 +81,7 @@ router.post("/login", async (req, res) => {
   }
 });
 
-router.post("/refresh", async (req, res) => {
+router.post("/refresh", validate({ body: refreshTokenSchema }), async (req, res) => {
   const { refreshToken } = req.body;
 
   if (!refreshToken) return res.status(400).json({ message: "Refresh token required" });

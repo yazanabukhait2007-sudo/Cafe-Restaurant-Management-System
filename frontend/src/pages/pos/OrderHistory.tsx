@@ -1,6 +1,7 @@
 import React from 'react';
-import { usePosStore, HistoryItem } from '@/store/pos';
+import { usePosStore, HistoryItem, Ticket } from '@/store/pos';
 import { useSettingsStore } from '@/store/settings';
+import { useAuthStore } from '@/store/auth';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -9,32 +10,123 @@ import {
   Clock, 
   Users, 
   Receipt, 
-  DollarSign, 
   Search, 
   Filter, 
   ArrowRight, 
-  ExternalLink, 
   ChevronDown, 
   LayoutGrid, 
   List, 
   Settings2, 
   Check, 
-  X
+  X,
+  Play,
+  CheckCircle2,
+  AlertCircle,
+  TrendingUp,
+  RotateCcw,
+  Sparkles,
+  Server,
+  Activity,
+  User
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '@/utils/utils';
+import { toast } from 'sonner';
+
+// Status color and style helpers
+export const getStatusBadgeStyles = (status: string) => {
+  const norm = (status || '').toUpperCase();
+  switch (norm) {
+    case 'DRAFT':
+      return 'bg-stone-100 text-stone-700 border border-stone-300';
+    case 'CONFIRMED':
+      return 'bg-blue-100 text-blue-800 border border-blue-300';
+    case 'PREPARING':
+      return 'bg-amber-100 text-amber-800 border border-amber-300 animate-pulse';
+    case 'READY':
+      return 'bg-emerald-100 text-emerald-800 border border-emerald-400 font-bold ring-2 ring-emerald-400/20';
+    case 'SERVED':
+      return 'bg-purple-100 text-purple-800 border border-purple-300';
+    case 'PAID':
+      return 'bg-teal-100 text-teal-800 border border-teal-300';
+    case 'CLOSED':
+      return 'bg-neutral-100 text-neutral-500 border border-neutral-300';
+    case 'CANCELLED':
+      return 'bg-rose-100 text-rose-800 border border-rose-300';
+    default:
+      if (norm === 'PENDING') return 'bg-blue-100 text-blue-800 border border-blue-300';
+      if (norm === 'PREPARING_OLD') return 'bg-amber-100 text-amber-800 border border-amber-300';
+      if (norm === 'DELAYED') return 'bg-rose-100 text-rose-800 border border-rose-300';
+      return 'bg-stone-100 text-stone-600 border border-stone-200';
+  }
+};
+
+// Returns allowed transitions list based on status and user role
+export const getAllowedTransitions = (status: string, role: string) => {
+  const norm = (status || '').toUpperCase();
+  const isAdminOrManager = role === 'admin' || role === 'manager';
+
+  switch (norm) {
+    case 'DRAFT':
+      return [
+        { to: 'CONFIRMED', labelAr: 'تأكيد الطلب', labelEn: 'Confirm Order', variant: 'confirm' },
+        { to: 'CANCELLED', labelAr: 'إلغاء', labelEn: 'Cancel', variant: 'cancel' }
+      ];
+    case 'CONFIRMED':
+    case 'PENDING':
+      return [
+        { to: 'PREPARING', labelAr: 'البدء بالتحضير', labelEn: 'Start Loading', variant: 'prep' },
+        { to: 'CANCELLED', labelAr: 'إلغاء الطلب', labelEn: 'Cancel Order', variant: 'cancel' }
+      ];
+    case 'PREPARING':
+      return [
+        { to: 'READY', labelAr: 'تحديد كجاهز', labelEn: 'Mark Ready', variant: 'ready' }
+      ];
+    case 'READY':
+      return [
+        { to: 'SERVED', labelAr: 'تسليم للزبون', labelEn: 'Mark Served', variant: 'serve' }
+      ];
+    case 'SERVED':
+      return [
+        { to: 'PAID', labelAr: 'تأكيد الدفع', labelEn: 'Confirm Payment', variant: 'pay' }
+      ];
+    case 'PAID':
+      return [
+        { to: 'CLOSED', labelAr: 'إغلاق الفاتورة', labelEn: 'Close Ticket', variant: 'close' }
+      ];
+    case 'CLOSED':
+    case 'CANCELLED':
+    default:
+      return [];
+  }
+};
 
 export default function OrderHistory() {
   const history = usePosStore(state => state.history);
-  const { t } = useTranslation();
+  const tickets = usePosStore(state => state.tickets);
+  const updateTicketStatus = usePosStore(state => state.updateTicketStatus);
+  const { user } = useAuthStore();
+  const { t, i18n } = useTranslation();
+  const isAr = i18n.language === 'ar' || document.documentElement.dir === 'rtl';
   const navigate = useNavigate();
   const { cafeName, taxRate } = useSettingsStore();
+
+  const [activeTab, setActiveTab] = React.useState<'active' | 'completed'>('active');
   const [searchQuery, setSearchQuery] = React.useState('');
   const [viewType, setViewType] = React.useState<'grid' | 'list'>('list');
   const [expandedId, setExpandedId] = React.useState<string | null>(null);
   const [showFilters, setShowFilters] = React.useState(false);
-  const [receiptOrder, setReceiptOrder] = React.useState<HistoryItem | null>(null);
-  
+  const [receiptOrder, setReceiptOrder] = React.useState<any | null>(null);
+  const [timeTicker, setTimeTicker] = React.useState<number>(0);
+
+  // Time ticker to update wait-times dynamically in UI
+  React.useEffect(() => {
+    const timer = setInterval(() => {
+      setTimeTicker(prev => prev + 1);
+    }, 15000);
+    return () => clearInterval(timer);
+  }, []);
+
   // Filter states
   const [minGuests, setMinGuests] = React.useState<number>(0);
   const [maxGuests, setMaxGuests] = React.useState<number>(20);
@@ -44,15 +136,20 @@ export default function OrderHistory() {
   const filteredHistory = history.filter(item => {
     const matchesSearch = item.tableName.toLowerCase().includes(searchQuery.toLowerCase()) ||
                           item.id.toLowerCase().includes(searchQuery.toLowerCase());
-    
     const guestCount = item.guests || 0;
     const matchesGuests = guestCount >= minGuests && guestCount <= maxGuests;
-    
     const itemDate = new Date(item.checkIn).getTime();
     const matchesStart = startDate ? itemDate >= new Date(startDate).getTime() : true;
-    const matchesEnd = endDate ? itemDate <= new Date(endDate).getTime() + 86400000 : true; // +1 day to include the end date
+    const matchesEnd = endDate ? itemDate <= new Date(endDate).getTime() + 86400000 : true;
     
     return matchesSearch && matchesGuests && matchesStart && matchesEnd;
+  });
+
+  const filteredTickets = tickets.filter(item => {
+    const matchesSearch = item.table.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          item.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          item.status.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesSearch;
   });
 
   const resetFilters = () => {
@@ -84,8 +181,29 @@ export default function OrderHistory() {
     });
   };
 
+  const getWaitTime = (createdAt?: string) => {
+    if (!createdAt) return '0m';
+    const diffMs = Date.now() - new Date(createdAt).getTime();
+    const diffMins = Math.max(0, Math.floor(diffMs / 60000));
+    if (diffMins < 60) return `${diffMins}m`;
+    return `${Math.floor(diffMins / 60)}h ${diffMins % 60}m`;
+  };
+
+  const getPrepTime = (prepStartedAt?: string) => {
+    if (!prepStartedAt) return '--';
+    const diffMs = Date.now() - new Date(prepStartedAt).getTime();
+    const diffMins = Math.max(0, Math.floor(diffMs / 60000));
+    if (diffMins < 60) return `${diffMins}m`;
+    return `${Math.floor(diffMins / 60)}h ${diffMins % 60}m`;
+  };
+
+  const handleStatusTransition = (ticketId: string, toStatus: string) => {
+    updateTicketStatus(ticketId, toStatus as Ticket['status']);
+    toast.success(isAr ? `تم تحديث حالة الطلب إلى "${toStatus}" بنجاح!` : `Order state changed to "${toStatus}" successfully!`);
+  };
+
   return (
-    <div className="flex flex-col h-full bg-[#FDFBF7] text-stone-900">
+    <div className="flex flex-col h-full bg-[#FDFBF7] text-stone-900 leading-normal" id="order-history-page">
       {/* Header */}
       <header className="h-20 bg-white border-b border-amber-900/10 px-6 flex items-center justify-between sticky top-0 z-30 shadow-sm flex-shrink-0">
         <div className="flex items-center gap-4">
@@ -93,15 +211,41 @@ export default function OrderHistory() {
             onClick={() => navigate('/pos/tables')}
             className="w-10 h-10 rounded-full bg-stone-50 border border-stone-200 flex items-center justify-center hover:bg-stone-100 transition shadow-sm"
           >
-            <ChevronLeft className="w-5 h-5" />
+            <ChevronLeft className="w-5 h-5 rtl:rotate-180" />
           </button>
           <div>
-            <h1 className="text-xl font-bold tracking-tight">{t('Order History')}</h1>
-            <p className="text-xs text-stone-400 font-medium uppercase tracking-widest">{t('Detailed Records')}</p>
+            <h1 className="text-xl font-bold tracking-tight">{t('Orders') || 'Orders'}</h1>
+            <p className="text-xs text-stone-400 font-medium uppercase tracking-widest">{isAr ? 'إدارة حالات وتاريخ المبيعات' : 'Manage statuses and sales history'}</p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
+           {/* Tab Selector */}
+           <div className="bg-stone-100 p-1 rounded-xl flex gap-1 border border-stone-200 mr-4">
+             <button
+               onClick={() => { setActiveTab('active'); resetFilters(); }}
+               className={cn(
+                 "px-4 py-2 rounded-lg text-xs font-bold transition-all",
+                 activeTab === 'active' 
+                   ? "bg-white text-stone-900 shadow-sm font-extrabold" 
+                   : "text-stone-400 hover:text-stone-600"
+               )}
+             >
+               {isAr ? 'الطلبات النشطة' : 'Active Orders'}
+             </button>
+             <button
+               onClick={() => { setActiveTab('completed'); resetFilters(); }}
+               className={cn(
+                 "px-4 py-2 rounded-lg text-xs font-bold transition-all",
+                 activeTab === 'completed' 
+                   ? "bg-white text-stone-900 shadow-sm font-extrabold" 
+                   : "text-stone-400 hover:text-stone-600"
+               )}
+             >
+               {t('Order History') || 'History Logs'}
+             </button>
+           </div>
+
            <div className="bg-stone-100 p-1 rounded-xl flex gap-1 border border-stone-200">
              <button 
                onClick={() => setViewType('grid')}
@@ -134,33 +278,36 @@ export default function OrderHistory() {
                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-stone-400 group-focus-within:text-primary transition-colors" />
                  <input 
                    type="text"
-                   placeholder={t('Search by table or order ID...')}
+                   placeholder={activeTab === 'active' ? (isAr ? 'البحث بالطاولة، رمز التذكرة أو الحالة...' : 'Search by table, ticket or status...') : t('Search by table or order ID...')}
                    value={searchQuery}
                    onChange={(e) => setSearchQuery(e.target.value)}
                    className="w-full h-14 pl-12 pr-6 bg-white border border-stone-200 rounded-2xl focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all shadow-sm"
                  />
                </div>
-               <button 
-                  onClick={() => setShowFilters(!showFilters)}
-                  className={cn(
-                    "h-14 px-6 rounded-2xl flex items-center gap-2 transition-all shadow-sm font-medium border relative",
-                    showFilters || activeFiltersCount > 0 
-                    ? "bg-primary text-primary-foreground border-primary" 
-                    : "bg-white text-stone-600 border-stone-200 hover:bg-stone-50"
-                  )}
-               >
-                 <Filter className="w-5 h-5" />
-                 {t('Filter')}
-                 {activeFiltersCount > 0 && (
-                   <span className="absolute -top-2 -right-2 w-6 h-6 bg-amber-500 text-white rounded-full flex items-center justify-center text-[10px] font-bold border-2 border-white">
-                     {activeFiltersCount}
-                   </span>
-                 )}
-               </button>
+               
+               {activeTab === 'completed' && (
+                 <button 
+                    onClick={() => setShowFilters(!showFilters)}
+                    className={cn(
+                      "h-14 px-6 rounded-2xl flex items-center gap-2 transition-all shadow-sm font-medium border relative",
+                      showFilters || activeFiltersCount > 0 
+                      ? "bg-primary text-primary-foreground border-primary" 
+                      : "bg-white text-stone-600 border-stone-200 hover:bg-stone-50"
+                    )}
+                 >
+                   <Filter className="w-5 h-5" />
+                   {t('Filter')}
+                   {activeFiltersCount > 0 && (
+                     <span className="absolute -top-2 -right-2 w-6 h-6 bg-amber-500 text-white rounded-full flex items-center justify-center text-[10px] font-bold border-2 border-white">
+                       {activeFiltersCount}
+                     </span>
+                   )}
+                 </button>
+               )}
             </div>
 
             <AnimatePresence>
-              {showFilters && (
+              {showFilters && activeTab === 'completed' && (
                 <motion.div 
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: 'auto', opacity: 1 }}
@@ -253,42 +400,346 @@ export default function OrderHistory() {
             </AnimatePresence>
           </div>
 
-          {filteredHistory.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 bg-white border-2 border-dashed border-stone-200 rounded-[2.5rem]">
-              <div className="w-20 h-20 bg-stone-50 rounded-3xl flex items-center justify-center mb-6 border border-stone-100">
-                <Receipt className="w-10 h-10 text-stone-300" />
+          {/* RENDERING DYNAMIC VIEW CONTENT DEPENDING ON SELECTOR TAB */}
+          {activeTab === 'active' ? (
+            /* ACTIVE TICKETS TAB */
+            filteredTickets.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-20 bg-white border-2 border-dashed border-stone-200 rounded-[2.5rem]">
+                <div className="w-20 h-20 bg-stone-50 rounded-3xl flex items-center justify-center mb-6 border border-stone-100">
+                  <Activity className="w-10 h-10 text-stone-300" />
+                </div>
+                <h2 className="text-xl font-bold text-stone-800 mb-2">{isAr ? 'لا توجد طلبات نشطة حالياً' : 'No active orders found'}</h2>
+                <p className="text-stone-400 max-w-xs text-center">{isAr ? 'يمكنك تحضير وإرسال طلب جديد من الطاولات لتتبعه هنا.' : 'You can create and send a table order to see and track it here.'}</p>
               </div>
-              <h2 className="text-xl font-bold text-stone-800 mb-2">{t('No history records found')}</h2>
-              <p className="text-stone-400 max-w-xs text-center">{t('Previous orders will appear here once sessions are ended.')}</p>
-            </div>
-          ) : viewType === 'list' ? (
-            <div className="space-y-4">
-              {filteredHistory.map((item) => (
-                <HistoryListItem 
-                  key={item.id} 
-                  item={item} 
-                  t={t} 
-                  isExpanded={expandedId === item.id}
-                  onToggle={() => setExpandedId(expandedId === item.id ? null : item.id)}
-                  formatDate={formatDate}
-                  formatTime={formatTime}
-                  onViewReceipt={setReceiptOrder}
-                />
-              ))}
-            </div>
+            ) : viewType === 'list' ? (
+              <div className="space-y-4">
+                {filteredTickets.map((ticket) => {
+                  const isExpanded = expandedId === ticket.id;
+                  const allowed = getAllowedTransitions(ticket.status, user?.role || 'cashier');
+                  const ticketTotal = ticket.items.reduce((sum, i) => sum + (i.price * i.quantity), 0);
+                  
+                  return (
+                    <div 
+                      key={ticket.id} 
+                      className={cn(
+                        "bg-white rounded-[2rem] border border-stone-200 shadow-sm overflow-hidden transition-all duration-300",
+                        isExpanded ? "ring-4 ring-primary/5 border-primary/20 shadow-md" : "hover:border-stone-300"
+                      )}
+                    >
+                      <div 
+                        onClick={() => setExpandedId(isExpanded ? null : ticket.id)}
+                        className="p-6 cursor-pointer flex flex-wrap items-center justify-between gap-6"
+                      >
+                        <div className="flex items-center gap-5">
+                          <div className="w-14 h-14 bg-stone-900 text-stone-50 rounded-2xl flex items-center justify-center font-bold shadow-lg">
+                            {ticket.table}
+                          </div>
+                          <div className="flex flex-col">
+                            <div className="flex items-center gap-3">
+                              <span className="font-bold text-lg">{t('Order') || 'Order'} #{ticket.id}</span>
+                              <span className={cn("px-2.5 py-1 rounded-full text-[10px] uppercase font-bold tracking-wider", getStatusBadgeStyles(ticket.status))}>
+                                {isAr ? (
+                                  ticket.status === 'DRAFT' ? 'مسودة' :
+                                  ticket.status === 'CONFIRMED' ? 'مؤكد' :
+                                  ticket.status === 'PREPARING' ? 'قيد التحضير' :
+                                  ticket.status === 'READY' ? 'جاهز' :
+                                  ticket.status === 'SERVED' ? 'تم التقديم' :
+                                  ticket.status === 'PAID' ? 'تم الدفع' :
+                                  ticket.status === 'CLOSED' ? 'مغلق' :
+                                  ticket.status === 'CANCELLED' ? 'ملغي' : ticket.status
+                                ) : ticket.status}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-3 text-stone-400 text-xs font-medium uppercase tracking-widest mt-1">
+                              <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {isAr ? 'وقت الإرسال' : 'Sent'} {ticket.time}</span>
+                              <span className="flex items-center gap-1 text-amber-600 font-semibold"><Clock className="w-3 h-3" /> {isAr ? 'قيد الانتظار' : 'Waiting'}: {getWaitTime(ticket.createdAt)}</span>
+                              {ticket.prepStartedAt && (
+                                <span className="flex items-center gap-1 text-rose-500 font-semibold"><Clock className="w-3 h-3 animate-spin duration-3000" /> {isAr ? 'التحضير' : 'Prep'}: {getPrepTime(ticket.prepStartedAt)}</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-8">
+                          <div className="hidden sm:flex flex-col items-center">
+                            <span className="text-[10px] text-stone-400 uppercase tracking-widest font-bold mb-1">{isAr ? 'الموظف' : 'Server'}</span>
+                            <div className="flex items-center gap-1.5 font-bold text-stone-700">
+                              <User className="w-3.5 h-3.5 text-stone-400" />
+                              {ticket.server}
+                            </div>
+                          </div>
+
+                          <div className="hidden sm:flex flex-col items-center">
+                            <span className="text-[10px] text-stone-400 uppercase tracking-widest font-bold mb-1">{t('Items') || 'Items'}</span>
+                            <span className="font-bold font-mono text-stone-700">{ticket.items.reduce((sum, item) => sum + item.quantity, 0)}</span>
+                          </div>
+
+                          <div className="flex flex-col items-end">
+                            <span className="text-[10px] text-stone-400 uppercase tracking-widest font-bold mb-1">{t('Total Amount') || 'Total Amount'}</span>
+                            <div className="text-xl font-bold text-primary">${ticketTotal.toFixed(2)}</div>
+                          </div>
+
+                          <div className={cn(
+                            "w-10 h-10 rounded-full bg-stone-50 flex items-center justify-center text-stone-400 transition-transform duration-300",
+                            isExpanded && "rotate-180 bg-primary/10 text-primary"
+                          )}>
+                            <ChevronDown className="w-5 h-5" />
+                          </div>
+                        </div>
+                      </div>
+
+                      <AnimatePresence>
+                        {isExpanded && (
+                          <motion.div 
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            className="bg-stone-50/50 border-t border-stone-100 overflow-hidden"
+                          >
+                            <div className="p-8 grid grid-cols-1 lg:grid-cols-3 gap-10">
+                              <div className="lg:col-span-2 space-y-6">
+                                <div>
+                                  <h4 className="text-[10px] text-stone-400 uppercase tracking-widest font-bold mb-4 flex items-center gap-2">
+                                    <List className="w-3 h-3" />
+                                    {t('Order Details') || 'Order Details'}
+                                  </h4>
+                                  <div className="space-y-3 bg-white rounded-2xl p-6 border border-stone-200">
+                                    {ticket.items.map((orderItem, idx) => (
+                                      <div key={idx} className="flex justify-between items-center text-sm">
+                                        <div className="flex items-center gap-3">
+                                          <span className="w-6 h-6 rounded-lg bg-stone-100 flex items-center justify-center text-[10px] font-bold text-stone-500">{orderItem.quantity}x</span>
+                                          <span className="font-medium">{orderItem.name}</span>
+                                          {orderItem.notes && <span className="text-stone-400 text-xs italic">({orderItem.notes})</span>}
+                                        </div>
+                                        <span className="font-mono text-stone-500">${(orderItem.price * orderItem.quantity).toFixed(2)}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+
+                                {/* SMART ACTION BUTTONS FOR TRANSITIONS */}
+                                <div>
+                                  <h4 className="text-[10px] text-stone-400 uppercase tracking-widest font-bold mb-4">
+                                    {isAr ? 'الإجراءات الذكية والتحكم' : 'Smart Actions & Transitions'}
+                                  </h4>
+                                  {allowed.length === 0 ? (
+                                    <div className="bg-white p-4 rounded-xl border border-stone-200 text-stone-400 text-xs flex items-center gap-2">
+                                      <AlertCircle className="w-4 h-4" />
+                                      {isAr ? 'لا توجد انتقالات إضافية متاحة لحسابك أو للحالة للطلب الحالية.' : 'No available state actions for your current account role or status.'}
+                                    </div>
+                                  ) : (
+                                    <div className="flex flex-wrap gap-3">
+                                      {allowed.map((transition) => (
+                                        <button
+                                          key={transition.to}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleStatusTransition(ticket.id, transition.to);
+                                          }}
+                                          className={cn(
+                                            "px-6 h-12 rounded-xl text-xs font-medium tracking-wide transition-all shadow-sm active:scale-95 flex items-center gap-2 font-bold",
+                                            transition.variant === 'confirm' && "bg-blue-600 hover:bg-blue-700 text-white",
+                                            transition.variant === 'prep' && "bg-amber-500 hover:bg-amber-600 text-white animate-pulse",
+                                            transition.variant === 'ready' && "bg-emerald-600 hover:bg-emerald-700 text-white",
+                                            transition.variant === 'serve' && "bg-purple-600 hover:bg-purple-700 text-white",
+                                            transition.variant === 'pay' && "bg-teal-600 hover:bg-teal-700 text-white",
+                                            transition.variant === 'close' && "bg-stone-900 hover:bg-stone-800 text-stone-50",
+                                            transition.variant === 'cancel' && "bg-red-50 hover:bg-red-100 text-red-600 border border-red-200"
+                                          )}
+                                        >
+                                          <Play className="w-3.5 h-3.5 fill-current" />
+                                          {isAr ? transition.labelAr : transition.labelEn}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* TIMELINE VIEW (REQUIREMENT #5) */}
+                              <div className="space-y-6">
+                                <div>
+                                  <h4 className="text-[10px] text-stone-400 uppercase tracking-widest font-bold mb-4 flex items-center gap-2">
+                                    <TrendingUp className="w-3 h-3" />
+                                    {isAr ? 'الجدول الزمني للطلب' : 'Order Lifecycle Timeline'}
+                                  </h4>
+                                  <div className="bg-white rounded-2xl p-6 border border-stone-200 space-y-4">
+                                     {(!ticket.timeline || ticket.timeline.length === 0) ? (
+                                       <div className="flex items-center gap-3">
+                                         <div className="w-2 h-2 rounded-full bg-stone-350" />
+                                         <div className="flex flex-col">
+                                           <span className="text-xs font-bold text-stone-600">{isAr ? 'تم الإرسال الكلي' : 'Sent completely'}</span>
+                                           <span className="text-[10px] text-stone-400">{ticket.time}</span>
+                                         </div>
+                                       </div>
+                                     ) : (
+                                       ticket.timeline.map((step, idx) => (
+                                         <div key={idx} className="flex flex-col">
+                                           {idx > 0 && <div className="w-0.5 h-5 bg-stone-100 self-start ml-2 rounded-full my-1.5" />}
+                                           <div className="flex items-start gap-4">
+                                             <div className={cn(
+                                               "w-4 h-4 rounded-full flex items-center justify-center border font-bold text-[8px] mt-0.5",
+                                               step.status === 'CONFIRMED' && "bg-blue-100 text-blue-700 border-blue-300",
+                                               step.status === 'PREPARING' && "bg-amber-100 text-amber-700 border-amber-300",
+                                               step.status === 'READY' && "bg-emerald-100 text-emerald-800 border-emerald-300",
+                                               step.status === 'SERVED' && "bg-purple-100 text-purple-700 border-purple-300",
+                                               step.status === 'PAID' && "bg-teal-100 text-teal-700 border-teal-300",
+                                               step.status === 'CLOSED' && "bg-neutral-100 text-neutral-600 border-neutral-300",
+                                               step.status === 'CANCELLED' && "bg-rose-105 text-rose-700 border-rose-300"
+                                             )}>
+                                               {idx + 1}
+                                             </div>
+                                             <div className="flex-1 flex justify-between items-start">
+                                               <div className="flex flex-col">
+                                                 <span className="text-xs font-bold text-stone-800">
+                                                   {isAr ? (
+                                                     step.status === 'DRAFT' ? 'مسودة' :
+                                                     step.status === 'CONFIRMED' ? 'مؤكد' :
+                                                     step.status === 'PREPARING' ? 'قيد التحضير' :
+                                                     step.status === 'READY' ? 'جاهز' :
+                                                     step.status === 'SERVED' ? 'تم التقديم' :
+                                                     step.status === 'PAID' ? 'تم الدفع' :
+                                                     step.status === 'CLOSED' ? 'مغلق' :
+                                                     step.status === 'CANCELLED' ? 'ملغي' : step.status
+                                                   ) : step.status}
+                                                 </span>
+                                                 <span className="text-[10px] text-stone-400 font-bold">{step.employee}</span>
+                                               </div>
+                                               <span className="text-[10px] font-mono font-bold text-stone-500 bg-stone-50 px-2 py-0.5 rounded border border-stone-200">{step.time}</span>
+                                             </div>
+                                           </div>
+                                         </div>
+                                       ))
+                                     )}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              /* ACTIVE CARDS VIEW */
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                {filteredTickets.map((ticket) => {
+                  const allowed = getAllowedTransitions(ticket.status, user?.role || 'cashier');
+                  const ticketTotal = ticket.items.reduce((sum, i) => sum + (i.price * i.quantity), 0);
+                  
+                  return (
+                    <div 
+                      key={ticket.id}
+                      className="bg-white rounded-[2rem] border border-stone-200 p-8 shadow-sm flex flex-col relative overflow-hidden group hover:border-primary/20 transition-all hover:shadow-xl"
+                    >
+                      <div className="flex justify-between items-start relative z-10 mb-6">
+                         <div className="w-14 h-14 bg-stone-900 text-stone-50 rounded-2xl flex items-center justify-center font-bold shadow-lg">
+                           {ticket.table}
+                         </div>
+                         <div className="flex flex-col items-end">
+                           <span className={cn("px-2.5 py-1 rounded-full text-[10px] uppercase font-bold tracking-wider mb-1", getStatusBadgeStyles(ticket.status))}>
+                             {isAr ? (
+                               ticket.status === 'DRAFT' ? 'مسودة' :
+                               ticket.status === 'CONFIRMED' ? 'مؤكد' :
+                               ticket.status === 'PREPARING' ? 'قيد التحضير' :
+                               ticket.status === 'READY' ? 'جاهز' :
+                               ticket.status === 'SERVED' ? 'تم التقديم' :
+                               ticket.status === 'PAID' ? 'تم الدفع' :
+                               ticket.status === 'CLOSED' ? 'مغلق' :
+                               ticket.status === 'CANCELLED' ? 'ملغي' : ticket.status
+                             ) : ticket.status}
+                           </span>
+                           <span className="text-2xl font-black text-stone-900 tracking-tighter">${ticketTotal.toFixed(2)}</span>
+                         </div>
+                      </div>
+
+                      <div className="space-y-4 flex-1">
+                        <div className="text-xs space-y-2 py-3 border-y border-stone-100">
+                          {ticket.items.map((it, idx) => (
+                            <div key={idx} className="flex justify-between">
+                              <span className="text-stone-600 font-medium">{it.quantity}x {it.name}</span>
+                              <span className="font-mono text-stone-400">${(it.price * it.quantity).toFixed(2)}</span>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4 text-xs font-medium text-stone-500">
+                          <div>
+                            <span className="text-[10px] text-stone-400 uppercase tracking-widest font-bold block mb-0.5">{isAr ? 'الانتظار' : 'Waiting'}</span>
+                            <span className="font-bold text-amber-600 flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> {getWaitTime(ticket.createdAt)}</span>
+                          </div>
+                          <div>
+                            <span className="text-[10px] text-stone-400 uppercase tracking-widest font-bold block mb-0.5">{isAr ? 'التحضير' : 'Preparation'}</span>
+                            <span className="font-bold text-rose-500 flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> {getPrepTime(ticket.prepStartedAt)}</span>
+                          </div>
+                        </div>
+
+                        {/* ALLOWED STEP ADVANCE ACTIONS IN CARD */}
+                        <div className="pt-4 border-t border-stone-100 space-y-2">
+                           {allowed.length > 0 ? (
+                             allowed.slice(0, 1).map((tr) => (
+                               <button
+                                 key={tr.to}
+                                 onClick={() => handleStatusTransition(ticket.id, tr.to)}
+                                 className="w-full h-11 bg-primary text-primary-foreground text-xs font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-primary/95 transition-all shadow-sm active:scale-95"
+                               >
+                                 <Play className="w-3.5 h-3.5 fill-current" />
+                                 {isAr ? tr.labelAr : tr.labelEn}
+                               </button>
+                             ))
+                           ) : (
+                             <div className="text-stone-400 text-[10px] italic text-center py-2">
+                               {isAr ? 'طلب نشط - لا توجد إجراءات للمرحلة' : 'Active order - no steps available'}
+                             </div>
+                           )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-              {filteredHistory.map((item) => (
-                <HistoryGridCard 
-                  key={item.id} 
-                  item={item} 
-                  t={t}
-                  formatDate={formatDate}
-                  formatTime={formatTime}
-                  onViewReceipt={setReceiptOrder}
-                />
-              ))}
-            </div>
+            /* COMPLETED SALES HISTORY TAB */
+            filteredHistory.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-20 bg-white border-2 border-dashed border-stone-200 rounded-[2.5rem]">
+                <div className="w-20 h-20 bg-stone-50 rounded-3xl flex items-center justify-center mb-6 border border-stone-100">
+                  <Receipt className="w-10 h-10 text-stone-300" />
+                </div>
+                <h2 className="text-xl font-bold text-stone-800 mb-2">{t('No history records found')}</h2>
+                <p className="text-stone-400 max-w-xs text-center">{t('Previous orders will appear here once sessions are ended.')}</p>
+              </div>
+            ) : viewType === 'list' ? (
+              <div className="space-y-4">
+                {filteredHistory.map((item) => (
+                  <HistoryListItem 
+                    key={item.id} 
+                    item={item} 
+                    t={t} 
+                    isExpanded={expandedId === item.id}
+                    onToggle={() => setExpandedId(expandedId === item.id ? null : item.id)}
+                    formatDate={formatDate}
+                    formatTime={formatTime}
+                    onViewReceipt={setReceiptOrder}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                {filteredHistory.map((item) => (
+                  <HistoryGridCard 
+                    key={item.id} 
+                    item={item} 
+                    t={t}
+                    formatDate={formatDate}
+                    formatTime={formatTime}
+                    onViewReceipt={setReceiptOrder}
+                  />
+                ))}
+              </div>
+            )
           )}
         </div>
       </main>
@@ -341,7 +792,7 @@ export default function OrderHistory() {
 
                   <div className="space-y-3 mb-6">
                     {receiptOrder.items.map((item: any, idx: number) => (
-                      <div key={idx} className="flex justify-between items-start text-xs text-stone-800">
+                      <div key={idx} className="flex justify-between items-start text-xs text-stone-800 font-mono">
                         <div className="flex flex-col flex-1 pr-4 text-left rtl:text-right">
                           <span className="font-bold flex justify-between">
                             <span>{item.name}</span>
@@ -628,7 +1079,7 @@ function HistoryGridCard({ item, t, formatDate, formatTime, onViewReceipt }: any
                onClick={() => onViewReceipt && onViewReceipt(item)}
                className="w-full h-10 bg-primary/10 text-primary font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-primary hover:text-white transition-all text-xs focus:ring-2 focus:ring-primary/20"
              >
-               <Receipt className="w-3.5 h-3.5" />
+               <Receipt className="w-4 h-4" />
                {t('View Original Receipt')}
              </button>
           </div>

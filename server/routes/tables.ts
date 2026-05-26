@@ -1,6 +1,8 @@
 import express from "express";
 import { prisma } from "../lib/prisma.ts";
 import { authenticate, authorize } from "../middleware/auth.ts";
+import { validate } from "../middleware/validate.ts";
+import { createTableSchema, updateTableStatusSchema } from "../validation/schemas.ts";
 
 const router = express.Router();
 
@@ -9,7 +11,7 @@ router.get("/", authenticate, async (req, res) => {
     const tables = await prisma.table.findMany({
       include: {
         orders: {
-          where: { status: { notIn: ["Completed", "Cancelled"] } },
+          where: { status: { notIn: ["CLOSED", "CANCELLED"] } },
         },
       },
     });
@@ -19,7 +21,7 @@ router.get("/", authenticate, async (req, res) => {
   }
 });
 
-router.post("/", authenticate, authorize(["tables:manage"]), async (req, res) => {
+router.post("/", authenticate, authorize(["tables:manage"]), validate({ body: createTableSchema }), async (req, res) => {
   const { number, capacity } = req.body;
   try {
     const table = await prisma.table.create({ data: { number, capacity } });
@@ -29,7 +31,7 @@ router.post("/", authenticate, authorize(["tables:manage"]), async (req, res) =>
   }
 });
 
-router.patch("/:id/status", authenticate, async (req, res) => {
+router.patch("/:id/status", authenticate, validate({ body: updateTableStatusSchema }), async (req, res) => {
   const { status } = req.body;
   try {
     const table = await prisma.table.update({

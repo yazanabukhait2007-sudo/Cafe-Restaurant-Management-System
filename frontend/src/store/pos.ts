@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { useAuthStore } from './auth';
 
 export interface Product {
   id: number;
@@ -25,14 +26,24 @@ export interface OrderItem {
   completed?: boolean;
 }
 
+export interface TimelineStep {
+  status: string;
+  time: string;
+  employee: string;
+  notes?: string;
+}
+
 export interface Ticket {
   id: string;
   table: string;
   time: string;
   duration: string;
   server: string;
-  status: 'pending' | 'preparing' | 'delayed';
+  status: 'DRAFT' | 'CONFIRMED' | 'PREPARING' | 'READY' | 'SERVED' | 'PAID' | 'CLOSED' | 'CANCELLED' | 'pending' | 'preparing' | 'delayed';
   items: OrderItem[];
+  createdAt?: string;
+  prepStartedAt?: string;
+  timeline?: TimelineStep[];
 }
 
 export interface Table {
@@ -112,12 +123,18 @@ const initialTickets: Ticket[] = [
     id: 'TKT-104',
     table: 'T-02',
     time: '12:45 PM',
+    createdAt: new Date(Date.now() - 30 * 60 * 1000).toISOString(), // 30 mins ago
+    prepStartedAt: new Date(Date.now() - 25 * 60 * 1000).toISOString(), // 25 mins ago
     duration: '4m 30s',
     server: 'Sarah M.',
-    status: 'preparing',
+    status: 'PREPARING',
     items: [
       { id: '1', productId: 1, quantity: 2, name: 'Cappuccino', notes: 'Extra hot', price: 4.5, completed: true },
       { id: '2', productId: 2, quantity: 1, name: 'Croissant', price: 4.0, completed: false },
+    ],
+    timeline: [
+      { status: 'CONFIRMED', time: '12:45 PM', employee: 'Sarah M.', notes: 'Order initiated' },
+      { status: 'PREPARING', time: '12:50 PM', employee: 'Kitchen / المطبخ', notes: 'Preparation started' }
     ]
   }
 ];
@@ -151,25 +168,70 @@ export const usePosStore = create<PosState>()(
       history: [],
       products: initialProducts,
       categories: initialCategories,
-  addTicket: (ticket) => set((state) => ({ tickets: [ticket, ...state.tickets] })),
+  addTicket: (ticket) => set((state) => {
+    // Gracefully handle 'pending' or 'preparing' mapping to standard uppercase statuses
+    let freshStatus: Ticket['status'] = 'CONFIRMED';
+    if (ticket.status === 'pending') freshStatus = 'CONFIRMED';
+    else if (ticket.status === 'preparing') freshStatus = 'PREPARING';
+    else if (ticket.status) freshStatus = ticket.status as Ticket['status'];
+
+    const employee = useAuthStore.getState().user?.name || ticket.server || 'Staff';
+    const enrichedTicket: Ticket = {
+      ...ticket,
+      status: freshStatus,
+      createdAt: ticket.createdAt || new Date().toISOString(),
+      timeline: ticket.timeline || [
+        {
+          status: freshStatus,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          employee,
+          notes: 'Order created'
+        }
+      ]
+    };
+    return { tickets: [enrichedTicket, ...state.tickets] };
+  }),
   addToExistingTicketByTable: (tableName, items) => set((state) => {
-    const existingTicketIndex = state.tickets.findIndex(t => t.table === tableName && (t.status === 'pending' || t.status === 'preparing'));
+    const existingTicketIndex = state.tickets.findIndex(t => t.table === tableName && !['CLOSED', 'CANCELLED', 'PAID'].includes(t.status));
+    const employee = useAuthStore.getState().user?.name || 'Staff';
+    const timeNow = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
     if (existingTicketIndex >= 0) {
       const newTickets = [...state.tickets];
+      const origTicket = newTickets[existingTicketIndex];
+      const updatedTimeline = [...(origTicket.timeline || [])];
+      
+      updatedTimeline.push({
+        status: origTicket.status,
+        time: timeNow,
+        employee,
+        notes: `Added ${items.length} item(s) to order`
+      });
+
       newTickets[existingTicketIndex] = {
-        ...newTickets[existingTicketIndex],
-        items: [...newTickets[existingTicketIndex].items, ...items]
+        ...origTicket,
+        items: [...origTicket.items, ...items],
+        timeline: updatedTimeline
       };
       return { tickets: newTickets };
     } else {
       const newTicket: Ticket = {
         id: `TKT-${Math.floor(Math.random() * 1000)}`,
         table: tableName,
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        time: timeNow,
+        createdAt: new Date().toISOString(),
         duration: '0m',
-        server: 'Staff',
-        status: 'pending',
-        items: items
+        server: employee,
+        status: 'CONFIRMED',
+        items: items,
+        timeline: [
+          {
+            status: 'CONFIRMED',
+            time: timeNow,
+            employee,
+            notes: 'Order created'
+          }
+        ]
       };
       return { tickets: [newTicket, ...state.tickets] };
     }
@@ -177,12 +239,52 @@ export const usePosStore = create<PosState>()(
   addHistoryEntry: (entry) => set((state) => ({
     history: [entry, ...state.history]
   })),
-  updateTicketStatus: (id, status) => set((state) => ({
-    tickets: state.tickets.map(t => t.id === id ? { ...t, status } : t)
-  })),
-  markTicketReady: (id) => set((state) => ({
-    tickets: state.tickets.filter(t => t.id !== id)
-  })),
+  updateTicketStatus: (id, status) => set((state) => {
+    const employee = useAuthStore.getState().user?.name || 'Staff';
+    const timeNow = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    
+    return {
+      tickets: state.tickets.map(t => {
+        if (t.id !== id) return t;
+        const timeline = [...(t.timeline || [])];
+        timeline.push({
+          status,
+          time: timeNow,
+          employee,
+          notes: `Status transitioned to ${status}`
+        });
+        const prepStartedAt = status === 'PREPARING' ? new Date().toISOString() : t.prepStartedAt;
+        return {
+          ...t,
+          status,
+          prepStartedAt,
+          timeline
+        };
+      })
+    };
+  }),
+  markTicketReady: (id) => set((state) => {
+    const employee = useAuthStore.getState().user?.name || 'Kitchen / المطبخ';
+    const timeNow = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    
+    return {
+      tickets: state.tickets.map(t => {
+        if (t.id !== id) return t;
+        const timeline = [...(t.timeline || [])];
+        timeline.push({
+          status: 'READY',
+          time: timeNow,
+          employee,
+          notes: 'Marked ready for delivery'
+        });
+        return {
+          ...t,
+          status: 'READY',
+          timeline
+        };
+      })
+    };
+  }),
   toggleItemComplete: (ticketId, itemIdx) => set((state) => ({
     tickets: state.tickets.map(t => {
       if (t.id === ticketId) {

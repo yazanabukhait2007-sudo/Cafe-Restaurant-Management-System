@@ -6,8 +6,8 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model User {
@@ -21,8 +21,11 @@ model User {
   sessions      Session[]
   activityLogs  ActivityLog[]
   notifications Notification[]
+  orderStatusHistories OrderStatusHistory[]
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+
+  @@index([roleId])
 }
 
 model Role {
@@ -31,12 +34,15 @@ model Role {
   permissions Permission[]
   users       User[]
   createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
 }
 
 model Permission {
-  id    String @id @default(cuid())
-  name  String @unique // e.g. "orders:create", "inventory:manage"
-  roles Role[]
+  id        String   @id @default(cuid())
+  name      String   @unique // e.g. "orders:create", "inventory:manage"
+  roles     Role[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Employee {
@@ -50,6 +56,8 @@ model Employee {
   shifts           Shift[]
   managedOrders    Order[]      @relation("WaiterOrders")
   kitchenOrders    Order[]      @relation("KitchenStaff")
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
 }
 
 model Attendance {
@@ -60,6 +68,9 @@ model Attendance {
   clockOut    DateTime?
   totalHours  Float?
   createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([employeeId])
 }
 
 model Shift {
@@ -70,6 +81,9 @@ model Shift {
   endTime     DateTime
   status      String   // Scheduled, Completed, Cancelled
   createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([employeeId])
 }
 
 model Table {
@@ -80,6 +94,7 @@ model Table {
   reservations Reservation[]
   orders       Order[]
   createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
 }
 
 model Reservation {
@@ -92,6 +107,9 @@ model Reservation {
   endTime     DateTime?
   status      String   // Pending, Confirmed, Completed, Cancelled
   createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([tableId])
 }
 
 model Order {
@@ -102,7 +120,7 @@ model Order {
   waiter          Employee?   @relation("WaiterOrders", fields: [waiterId], references: [id])
   kitchenStaffId  String?
   kitchenStaff    Employee?   @relation("KitchenStaff", fields: [kitchenStaffId], references: [id])
-  status          String      @default("New") // New, Preparing, Ready, Delivered, Completed, Cancelled
+  status          String      @default("DRAFT") // DRAFT, CONFIRMED, PREPARING, READY, SERVED, PAID, CLOSED, CANCELLED
   type            String      @default("DineIn") // DineIn, Takeaway, Delivery
   notes           String?
   subtotal        Float
@@ -115,8 +133,22 @@ model Order {
   coupon          Coupon?     @relation(fields: [couponId], references: [id])
   cashierSessionId String?
   cashierSession  CashierSession? @relation(fields: [cashierSessionId], references: [id])
+  statusHistory   OrderStatusHistory[]
+  confirmedAt     DateTime?
+  preparingAt     DateTime?
+  readyAt         DateTime?
+  servedAt        DateTime?
+  paidAt          DateTime?
+  closedAt        DateTime?
+  cancelledAt     DateTime?
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
+
+  @@index([tableId])
+  @@index([waiterId])
+  @@index([kitchenStaffId])
+  @@index([couponId])
+  @@index([cashierSessionId])
 }
 
 model OrderItem {
@@ -133,6 +165,11 @@ model OrderItem {
   notes           String?
   status          String         @default("Pending") // Pending, Preparing, Ready, Served
   createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@index([orderId])
+  @@index([productId])
+  @@index([productVariantId])
 }
 
 model Category {
@@ -141,6 +178,7 @@ model Category {
   image       String?
   products    Product[]
   createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }
 
 model Product {
@@ -157,6 +195,8 @@ model Product {
   ingredients Ingredient[]
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
+
+  @@index([categoryId])
 }
 
 model ProductVariant {
@@ -167,6 +207,9 @@ model ProductVariant {
   price       Float
   orderItems  OrderItem[]
   createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@index([productId])
 }
 
 model Ingredient {
@@ -189,6 +232,9 @@ model InventoryTransaction {
   quantity     Float
   note         String?
   createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@index([ingredientId])
 }
 
 model Coupon {
@@ -203,6 +249,7 @@ model Coupon {
   usedCount       Int      @default(0)
   orders          Order[]
   createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
 
 model Payment {
@@ -214,6 +261,9 @@ model Payment {
   status        String   // Completed, Refunded
   transactionId String?
   createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([orderId])
 }
 
 model CashierSession {
@@ -227,6 +277,9 @@ model CashierSession {
   orders       Order[]
   status       String    @default("Open") // Open, Closed
   createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([userId])
 }
 
 model ActivityLog {
@@ -238,6 +291,9 @@ model ActivityLog {
   details   String?
   ipAddress String?
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
 }
 
 model Notification {
@@ -249,6 +305,9 @@ model Notification {
   isRead    Boolean  @default(false)
   type      String   // Info, Warning, Alert
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
 }
 
 model Setting {
@@ -256,6 +315,7 @@ model Setting {
   key       String   @unique
   value     String
   group     String   // System, Cafe, UI, Finance
+  createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
@@ -266,4 +326,22 @@ model Session {
   refreshToken String   @unique
   expiresAt    DateTime
   createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model OrderStatusHistory {
+  id          String   @id @default(cuid())
+  orderId     String
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  fromStatus  String
+  toStatus    String
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  notes       String?
+  createdAt   DateTime @default(now())
+
+  @@index([orderId])
+  @@index([userId])
 }
