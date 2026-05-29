@@ -558,7 +558,7 @@ export default function MenuManagement() {
                 <button 
                   onClick={() => {
                     if (deleteConfirm.type === 'product') {
-                      deleteProduct(deleteConfirm.id as number);
+                      deleteProduct(deleteConfirm.id as string);
                       toast.success(t('Product deleted'));
                     } else {
                       deleteCategory(deleteConfirm.id as string);

@@ -8,6 +8,8 @@ import authRoutes from "./server/routes/auth.ts";
 import menuRoutes from "./server/routes/menu.ts";
 import tableRoutes from "./server/routes/tables.ts";
 import orderRoutes from "./server/routes/orders.ts";
+import inventoryRoutes from "./server/routes/inventory.ts";
+import recipeRoutes from "./server/routes/recipes.ts";
 
 dotenv.config();
 
@@ -33,6 +35,38 @@ async function startServer() {
       console.log(`User ${socket.id} joined room: ${room}`);
     });
 
+    // Realtime events
+    socket.on("order.created", (data) => {
+      console.log("[Server Socket] order.created received:", data?.ticket?.id);
+      socket.broadcast.emit("order.created", data);
+    });
+
+    socket.on("order.updated", (data) => {
+      console.log("[Server Socket] order.updated received:", data?.ticketId);
+      socket.broadcast.emit("order.updated", data);
+    });
+
+    socket.on("order.status_changed", (data) => {
+      console.log("[Server Socket] order.status_changed received:", data?.ticketId, data?.status);
+      socket.broadcast.emit("order.status_changed", data);
+    });
+
+    socket.on("table.updated", (data) => {
+      console.log("[Server Socket] table.updated received:", data?.tableId);
+      socket.broadcast.emit("table.updated", data);
+    });
+
+    socket.on("payment.completed", (data) => {
+      console.log("[Server Socket] payment.completed received:", data?.entry?.id);
+      socket.broadcast.emit("payment.completed", data);
+    });
+
+    socket.on("kitchen.updated", (data) => {
+      console.log("[Server Socket] kitchen.updated received:", data?.ticketId, data?.itemIdx, data?.completed);
+      socket.broadcast.emit("kitchen.updated", data);
+    });
+
+    // Retro-compatibility legacy event
     socket.on("order-created", (order) => {
       io.to("kitchen").emit("new-order", order);
       io.to("waiter").emit("order-status-update", order);
@@ -48,6 +82,8 @@ async function startServer() {
   app.use("/api/menu", menuRoutes);
   app.use("/api/tables", tableRoutes);
   app.use("/api/orders", orderRoutes);
+  app.use("/api/inventory", inventoryRoutes);
+  app.use("/api/recipes", recipeRoutes);
 
   // API Routes (Phase 2 will implement these)
   app.get("/api/health", (req, res) => {

@@ -36,7 +36,7 @@ router.post("/login", loginLimiter, validate({ body: loginSchema }), async (req,
     const accessToken = jwt.sign(
       { id: user.id, role: user.role.name, permissions },
       ACCESS_SECRET,
-      { expiresIn: "15m" }
+      { expiresIn: "30d" }
     );
 
     const refreshToken = jwt.sign(
@@ -106,7 +106,7 @@ router.post("/refresh", validate({ body: refreshTokenSchema }), async (req, res)
     const accessToken = jwt.sign(
       { id: session.user.id, role: session.user.role.name, permissions },
       ACCESS_SECRET,
-      { expiresIn: "15m" }
+      { expiresIn: "30d" }
     );
 
     res.json({ accessToken });

@@ -6,8 +6,8 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider = "sqlite"
+  url      = "file:./dev.db"
 }
 
 model User {
@@ -22,6 +22,7 @@ model User {
   activityLogs  ActivityLog[]
   notifications Notification[]
   orderStatusHistories OrderStatusHistory[]
+  inventoryTransactions InventoryTransaction[]
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -159,6 +160,7 @@ model OrderItem {
   product         Product        @relation(fields: [productId], references: [id])
   productVariantId String?
   productVariant  ProductVariant? @relation(fields: [productVariantId], references: [id])
+  modifiers       OrderItemModifier[]
   quantity        Int
   unitPrice       Float
   totalPrice      Float
@@ -172,6 +174,19 @@ model OrderItem {
   @@index([productVariantId])
 }
 
+model OrderItemModifier {
+  id          String    @id @default(cuid())
+  orderItemId String
+  orderItem   OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  modifierId  String
+  modifier    Modifier  @relation(fields: [modifierId], references: [id])
+  quantity    Int       @default(1)
+  price       Float     // Price at time of order
+
+  @@index([orderItemId])
+  @@index([modifierId])
+}
+
 model Category {
   id          String    @id @default(cuid())
   name        String    @unique
@@ -182,59 +197,198 @@ model Category {
 }
 
 model Product {
-  id          String           @id @default(cuid())
+  id          String              @id @default(cuid())
   categoryId  String
-  category    Category         @relation(fields: [categoryId], references: [id])
+  category    Category            @relation(fields: [categoryId], references: [id])
   name        String
   description String?
   price       Float
+  costPrice   Float               @default(0)
   image       String?
-  isAvailable Boolean          @default(true)
+  isAvailable Boolean             @default(true)
   variants    ProductVariant[]
+  modifierGroups ProductModifierGroup[]
   orderItems  OrderItem[]
-  ingredients Ingredient[]
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
+  recipeItems ProductIngredient[]
+  activeRecipeId String?          @unique
+  activeRecipe   Recipe?          @relation("ProductActiveRecipe", fields: [activeRecipeId], references: [id])
+  recipes        Recipe[]         @relation("ProductRecipes")
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
 
   @@index([categoryId])
 }
 
 model ProductVariant {
-  id          String      @id @default(cuid())
+  id          String              @id @default(cuid())
   productId   String
-  product     Product     @relation(fields: [productId], references: [id])
-  name        String      // Small, Medium, Large, Spicy, etc.
+  product     Product             @relation(fields: [productId], references: [id])
+  name        String              // Small, Medium, Large, Spicy, etc.
   price       Float
+  costPrice   Float               @default(0)
   orderItems  OrderItem[]
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  recipeItems ProductIngredient[]
+  activeRecipeId String?          @unique
+  activeRecipe   Recipe?          @relation("VariantActiveRecipe", fields: [activeRecipeId], references: [id])
+  recipes        Recipe[]         @relation("VariantRecipes")
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
 
   @@index([productId])
+}
+
+model ModifierGroup {
+  id          String              @id @default(cuid())
+  name        String
+  minSelection Int                @default(0)
+  maxSelection Int                @default(1)
+  modifiers   Modifier[]
+  products    ProductModifierGroup[]
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+}
+
+model ProductModifierGroup {
+  productId       String
+  product         Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  modifierGroupId String
+  modifierGroup   ModifierGroup  @relation(fields: [modifierGroupId], references: [id], onDelete: Cascade)
+  createdAt       DateTime       @default(now())
+
+  @@id([productId, modifierGroupId])
+}
+
+model Modifier {
+  id              String              @id @default(cuid())
+  modifierGroupId String
+  modifierGroup   ModifierGroup       @relation(fields: [modifierGroupId], references: [id], onDelete: Cascade)
+  name            String
+  price           Float               @default(0)
+  costPrice       Float               @default(0)
+  isAvailable     Boolean             @default(true)
+  activeRecipeId  String?             @unique
+  activeRecipe    Recipe?             @relation("ModifierActiveRecipe", fields: [activeRecipeId], references: [id])
+  recipes         Recipe[]            @relation("ModifierRecipes")
+  orderItemModifiers OrderItemModifier[]
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  @@index([modifierGroupId])
+}
+
+model Recipe {
+  id               String       @id @default(cuid())
+  name             String
+  version          Int          @default(1)
+  isActive         Boolean      @default(true)
+  notes            String?
+  preparationSteps RecipeStep[]
+  ingredients      RecipeIngredient[]
+  
+  // Targets
+  product          Product?     @relation("ProductRecipes", fields: [productId], references: [id])
+  productId        String?
+  productVariant   ProductVariant? @relation("VariantRecipes", fields: [productVariantId], references: [id])
+  productVariantId String?
+  modifier         Modifier?    @relation("ModifierRecipes", fields: [modifierId], references: [id])
+  modifierId       String?
+  ingredient       Ingredient?  @relation("IngredientRecipe")
+  
+  // Backlinks for active selection
+  activeForProduct Product?     @relation("ProductActiveRecipe")
+  activeForVariant ProductVariant? @relation("VariantActiveRecipe")
+  activeForModifier Modifier?   @relation("ModifierActiveRecipe")
+
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  @@index([productId])
+  @@index([productVariantId])
+  @@index([modifierId])
+}
+
+model RecipeIngredient {
+  id           String      @id @default(cuid())
+  recipeId     String
+  recipe       Recipe      @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  ingredientId String
+  ingredient   Ingredient  @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+  quantity     Float
+  unit         String?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@index([recipeId])
+  @@index([ingredientId])
+}
+
+model RecipeStep {
+  id          String   @id @default(cuid())
+  recipeId    String
+  recipe      Recipe    @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  stepNumber  Int
+  instruction String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([recipeId])
 }
 
 model Ingredient {
   id            String                 @id @default(cuid())
   name          String                 @unique
-  unit          String                 // gram, ml, unit
+  unit          String                 // Inventory unit: kg, L, Pack, Unit
   currentStock  Float                  @default(0)
   lowStockLevel Float                  @default(10)
-  products      Product[]
+  cost          Float                  @default(0) // Cost per base unit
+  supplier      String?
+  image         String?
+  
+  isSemiFinished Boolean               @default(false)
+  recipeId      String?                @unique
+  recipe        Recipe?                @relation("IngredientRecipe", fields: [recipeId], references: [id])
+
+  recipeItems   ProductIngredient[]
+  usedInRecipes RecipeIngredient[]
   transactions  InventoryTransaction[]
   createdAt     DateTime               @default(now())
   updatedAt     DateTime               @updatedAt
 }
 
+model ProductIngredient {
+  id               String          @id @default(cuid())
+  productId        String
+  product          Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productVariantId String?
+  productVariant   ProductVariant? @relation(fields: [productVariantId], references: [id], onDelete: Cascade)
+  ingredientId     String
+  ingredient       Ingredient      @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+  quantity         Float           // Consumption amount
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  @@index([productId])
+  @@index([productVariantId])
+  @@index([ingredientId])
+  @@unique([productId, productVariantId, ingredientId])
+}
+
 model InventoryTransaction {
-  id           String     @id @default(cuid())
+  id           String      @id @default(cuid())
   ingredientId String?
-  ingredient   Ingredient? @relation(fields: [ingredientId], references: [id])
-  type         String     // Purchase, Consumption, Wastage, Adjustment
-  quantity     Float
+  ingredient   Ingredient? @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+  type         String      // Purchase, Consumption, Wastage, Adjustment, Refund, Cancelled
+  quantity     Float       // The delta change (positive or negative)
+  beforeQty    Float
+  afterQty     Float
   note         String?
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
+  userId       String?
+  user         User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
 
   @@index([ingredientId])
+  @@index([userId])
 }
 
 model Coupon {

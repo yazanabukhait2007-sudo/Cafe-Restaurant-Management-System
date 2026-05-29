@@ -1,7 +1,7 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/utils/utils';
-import { Activity, DollarSign, Users, ShoppingBag } from 'lucide-react';
+import { Activity, DollarSign, Users, ShoppingBag, TrendingUp, AlertCircle, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { usePosStore } from '@/store/pos';
 import { useTranslation } from 'react-i18next';
 
@@ -88,6 +88,76 @@ export default function DashboardPage() {
                ))}
             </div>
           </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-6 md:grid-cols-2">
+        <Card className="bg-white border-stone-200 overflow-hidden rounded-[2rem] shadow-sm">
+           <CardHeader className="bg-stone-50/50 border-b border-stone-100 flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="text-base font-bold text-stone-900">{t('Product Profitability')}</CardTitle>
+                <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mt-1">{t('High Margin Items')}</p>
+              </div>
+              <ArrowUpRight className="w-5 h-5 text-emerald-500" />
+           </CardHeader>
+           <CardContent className="p-0">
+              <div className="divide-y divide-stone-100">
+                {[
+                  { name: t('V60 Special Edition'), margin: '84%', profit: '$8.50', count: 142 },
+                  { name: t('Iced Latte'), margin: '78%', profit: '$4.20', count: 521 },
+                  { name: t('Americano'), margin: '75%', profit: '$3.50', count: 890 },
+                  { name: t('Flat White'), margin: '72%', profit: '$3.80', count: 412 },
+                ].map((item, i) => (
+                  <div key={i} className="p-4 flex items-center justify-between hover:bg-stone-50 transition-colors">
+                    <div className="flex flex-col">
+                      <span className="text-sm font-bold text-stone-800">{item.name}</span>
+                      <span className="text-[10px] text-stone-400 font-bold uppercase tracking-widest">{item.count} {t('Sold')}</span>
+                    </div>
+                    <div className="text-right">
+                       <div className="flex items-center gap-1 text-emerald-600 font-bold justify-end">
+                         <TrendingUp className="w-3 h-3" />
+                         <span className="text-sm">{item.margin}</span>
+                       </div>
+                       <p className="text-[10px] text-stone-400 font-bold uppercase tracking-widest">{item.profit} {t('Profit/Unit')}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+           </CardContent>
+        </Card>
+
+        <Card className="bg-white border-stone-200 overflow-hidden rounded-[2rem] shadow-sm">
+           <CardHeader className="bg-stone-50/50 border-b border-stone-100 flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="text-base font-bold text-stone-900">{t('Cost Analysis Alert')}</CardTitle>
+                <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mt-1">{t('Low Margin / High Cost')}</p>
+              </div>
+              <AlertCircle className="w-5 h-5 text-rose-500" />
+           </CardHeader>
+           <CardContent className="p-0">
+              <div className="divide-y divide-stone-100">
+                {[
+                  { name: t('Turkey Toastie'), margin: '22%', cost: '$8.50', trend: t('trend_cost_up') },
+                  { name: t('Avocado Sandwich'), margin: '28%', cost: '$9.20', trend: t('trend_cost_up_small') },
+                  { name: t('Pistachio Croissant'), margin: '31%', cost: '$4.10', trend: t('Stable') },
+                  { name: t('Grilled Cheese'), margin: '34%', cost: '$3.80', trend: t('Rising') },
+                ].map((item, i) => (
+                  <div key={i} className="p-4 flex items-center justify-between hover:bg-stone-50 transition-colors">
+                    <div className="flex flex-col">
+                      <span className="text-sm font-bold text-stone-800">{item.name}</span>
+                      <span className="text-[10px] text-rose-500 font-bold uppercase tracking-widest">{item.trend}</span>
+                    </div>
+                    <div className="text-right">
+                       <div className="flex items-center gap-1 text-rose-600 font-bold justify-end">
+                         <ArrowDownRight className="w-3 h-3" />
+                         <span className="text-sm">{item.margin}</span>
+                       </div>
+                       <p className="text-[10px] text-stone-400 font-bold uppercase tracking-widest">${item.cost} {t('Unit Cost')}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+           </CardContent>
         </Card>
       </div>
     </div>

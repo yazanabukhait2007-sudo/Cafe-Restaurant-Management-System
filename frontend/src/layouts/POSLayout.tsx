@@ -5,6 +5,7 @@ import { Coffee, Grid3x3, ShoppingCart, LogOut, ArrowLeft, Lock, History, Utensi
 import { cn } from '@/utils/utils';
 import LockScreen from '@/components/LockScreen';
 import { useTranslation } from 'react-i18next';
+import SocketStatus from '@/components/SocketStatus';
 
 export default function POSLayout() {
   const { isAuthenticated, logout, isLocked, lock } = useAuthStore();
@@ -30,8 +31,12 @@ export default function POSLayout() {
     <div className="flex h-screen bg-background overflow-hidden text-foreground rtl:flex-row-reverse">
       {/* Thin Sidebar for POS */}
       <aside className="w-20 bg-card border-r rtl:border-r-0 rtl:border-l border-amber-900/10 flex flex-col items-center py-6 flex-shrink-0 z-20 shadow-xl">
-        <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center mb-8 shadow-lg shadow-primary/20">
+        <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center mb-6 shadow-lg shadow-primary/20">
           <Coffee className="w-6 h-6 text-primary-foreground" />
+        </div>
+
+        <div className="w-14 mb-6">
+          <SocketStatus />
         </div>
 
         <nav className="flex-1 w-full space-y-4 px-3">
@@ -84,7 +89,7 @@ export default function POSLayout() {
         </div>
       </aside>
 
-      <main className="flex-1 h-full relative">
+      <main className="flex-1 h-full relative min-w-0 overflow-hidden flex flex-col">
         <Outlet />
       </main>
     </div>

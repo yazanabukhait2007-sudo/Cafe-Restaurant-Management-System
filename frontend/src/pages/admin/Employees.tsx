@@ -3,12 +3,13 @@ import { Plus, Trash2, Search, Edit, X, Eye, UserPlus, EyeOff } from 'lucide-rea
 import { useAuthStore } from '@/store/auth';
 import { toast } from 'sonner';
 import { Worker, useWorkersStore } from '@/store/workers';
+import { useTranslation } from 'react-i18next';
 
 const ConfirmModal = ({ isOpen, title, message, confirmText, onConfirm, onCancel }: any) => {
   if (!isOpen) return null;
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="bg-background rounded-2xl shadow-2xl w-full max-w-sm p-6 border border-border" dir="rtl">
+      <div className="bg-background rounded-2xl shadow-2xl w-full max-w-sm p-6 border border-border">
         <h3 className="text-xl font-bold mb-2">{title}</h3>
         <p className="text-muted-foreground mb-6 whitespace-pre-wrap">{message}</p>
         <div className="flex gap-3 justify-end text-sm">
@@ -28,6 +29,7 @@ const ValidationTooltip = ({ message }: { message: string }) => (
 );
 
 export default function EmployeesPage() {
+  const { t } = useTranslation();
   const { user } = useAuthStore();
   const { workers, addWorker, updateWorker, deleteWorker } = useWorkersStore();
   const [searchTerm, setSearchTerm] = useState("");
@@ -58,7 +60,7 @@ export default function EmployeesPage() {
     if (!createAccountModal.isEdit && !accountForm.password) return; 
 
     // Mock API success
-    toast.success(createAccountModal.isEdit ? "تم تحديث حساب العامل بنجاح" : "تم إنشاء حساب للعامل بنجاح");
+    toast.success(createAccountModal.isEdit ? t("Product updated successfully") : t("Product added successfully"));
     setCreateAccountModal({ isOpen: false, workerId: null, workerName: "", isEdit: false });
     setAccountForm({ username: "", password: "", email: "" });
   };
@@ -136,7 +138,7 @@ export default function EmployeesPage() {
   const canViewDetails = user?.role === 'admin' || user?.role === 'manager';
 
   return (
-    <div dir="rtl" className="animate-in fade-in transition-all">
+    <div className="animate-in fade-in transition-all">
       <div className="flex justify-between items-end mb-8">
         <div>
           <h2 className="text-3xl font-light tracking-tight">إدارة العمال (السيرة الذاتية)</h2>
@@ -173,13 +175,13 @@ export default function EmployeesPage() {
           <table className="w-full text-right whitespace-nowrap">
             <thead className="bg-orange-50/50 border-b border-orange-200">
               <tr>
-                <th className="px-6 py-4 text-sm font-bold text-foreground">الاسم</th>
-                <th className="px-6 py-4 text-sm font-bold text-foreground">رقم الهاتف</th>
-                <th className="px-6 py-4 text-sm font-bold text-foreground">العمل الحالي</th>
-                <th className="px-6 py-4 text-sm font-bold text-foreground">الراتب</th>
-                <th className="px-6 py-4 text-sm font-bold text-foreground">الضمان</th>
+                <th className="px-6 py-4 text-sm font-bold text-foreground">{t('Employee Name')}</th>
+                <th className="px-6 py-4 text-sm font-bold text-foreground">{t('Phone Number')}</th>
+                <th className="px-6 py-4 text-sm font-bold text-foreground">{t('Job Title')}</th>
+                <th className="px-6 py-4 text-sm font-bold text-foreground">{t('Base Salary')}</th>
+                <th className="px-6 py-4 text-sm font-bold text-foreground">{t('Social Security')}</th>
                 {(canEdit || canDelete || canViewDetails) && (
-                  <th className="px-6 py-4 text-sm font-bold text-foreground w-32 text-center">إجراءات</th>
+                  <th className="px-6 py-4 text-sm font-bold text-foreground w-32 text-center">{t('Actions')}</th>
                 )}
               </tr>
             </thead>
@@ -194,12 +196,12 @@ export default function EmployeesPage() {
                     <td className="px-6 py-4 text-sm text-foreground font-medium">{worker.name}</td>
                     <td className="px-6 py-4 text-sm text-muted-foreground font-mono" dir="ltr">{worker.phone || '-'}</td>
                     <td className="px-6 py-4 text-sm text-muted-foreground">{worker.current_job || '-'}</td>
-                    <td className="px-6 py-4 text-sm text-muted-foreground font-mono bg-orange-50/20">{worker.salary ? `${worker.salary} دينار` : '-'}</td>
+                    <td className="px-6 py-4 text-sm text-muted-foreground font-mono bg-orange-50/20">{worker.salary ? `${worker.salary} ${t('SAR')}` : '-'}</td>
                     <td className="px-6 py-4 text-sm">
                       {worker.has_social_security ? (
-                        <span className="px-3 py-1 bg-emerald-500/10 text-emerald-600 rounded-full text-xs font-bold tracking-tight">مشمول</span>
+                        <span className="px-3 py-1 bg-emerald-500/10 text-emerald-600 rounded-full text-xs font-bold tracking-tight">{t('Yes')}</span>
                       ) : (
-                        <span className="px-3 py-1 bg-muted text-muted-foreground rounded-full text-xs font-medium tracking-tight">غير مشمول</span>
+                        <span className="px-3 py-1 bg-muted text-muted-foreground rounded-full text-xs font-medium tracking-tight">{t('No')}</span>
                       )}
                     </td>
                     {(canEdit || canDelete || canViewDetails) && (
@@ -208,7 +210,7 @@ export default function EmployeesPage() {
                           <button
                             onClick={() => handleOpenModal(worker, true)}
                             className="text-stone-500 hover:text-primary p-2 rounded-lg hover:bg-orange-200/50 transition-colors"
-                            title="عرض التفاصيل"
+                            title={t('View Details')}
                           >
                             <Eye className="w-5 h-5" />
                           </button>
@@ -217,7 +219,7 @@ export default function EmployeesPage() {
                           <button
                             onClick={() => handleOpenModal(worker)}
                             className="text-stone-500 hover:text-blue-600 p-2 rounded-lg hover:bg-blue-50 transition-colors"
-                            title="تعديل / عرض التفاصيل"
+                            title={t('Edit Details')}
                           >
                             <Edit className="w-5 h-5" />
                           </button>
@@ -240,11 +242,10 @@ export default function EmployeesPage() {
           <div 
             className="bg-background rounded-3xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col border border-border"
             onClick={(e) => e.stopPropagation()}
-            dir="rtl"
           >
             <div className="flex justify-between items-center p-6 border-b border-border bg-orange-50/50">
               <h2 className="text-xl font-bold text-foreground">
-                {viewOnly ? "تفاصيل العامل" : (editingWorker ? "تعديل بيانات العامل" : "إضافة عامل جديد")}
+                {viewOnly ? t('Worker Details') : (editingWorker ? t('Edit Worker Details') : t('Add New Worker'))}
               </h2>
               <button
                 onClick={handleCloseModal}
@@ -258,7 +259,7 @@ export default function EmployeesPage() {
               <form id="worker-form" onSubmit={handleSaveWorker} className="grid grid-cols-1 md:grid-cols-2 gap-6" noValidate>
                 
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-foreground mb-1.5">الاسم الرباعي *</label>
+                  <label className="block text-sm font-medium text-foreground mb-1.5">{t('Full Name')} *</label>
                   <div className="relative">
                     <input
                       type="text"
@@ -269,13 +270,13 @@ export default function EmployeesPage() {
                       className={`w-full px-4 py-2.5 bg-orange-50/30 border rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-colors ${ viewOnly ? 'opacity-70 cursor-not-allowed' : '' } ${ showErrors && !formData.name?.trim() ? "border-destructive focus:ring-destructive/50" : "border-orange-200" }`}
                     />
                     {showErrors && !formData.name?.trim() && (
-                      <ValidationTooltip message="يجب إدخال الاسم الرباعي" />
+                      <ValidationTooltip message={t("Enter full name")} />
                     )}
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-1.5">رقم الهاتف</label>
+                  <label className="block text-sm font-medium text-foreground mb-1.5">{t('Phone Number')}</label>
                   <input
                     type="text"
                     dir="ltr"
@@ -286,7 +287,7 @@ export default function EmployeesPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-1.5">رقم هاتف بديل</label>
+                  <label className="block text-sm font-medium text-foreground mb-1.5">{t('Alternate Phone')}</label>
                   <input
                     type="text"
                     dir="ltr"
@@ -298,7 +299,7 @@ export default function EmployeesPage() {
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-foreground mb-1.5">مكان السكن</label>
+                  <label className="block text-sm font-medium text-foreground mb-1.5">{t('Address')}</label>
                   <input
                     type="text"
                     value={formData.address || ""}
@@ -309,7 +310,7 @@ export default function EmployeesPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-1.5">الرقم الوطني</label>
+                  <label className="block text-sm font-medium text-foreground mb-1.5">{t('National ID')}</label>
                   <input
                     type="text"
                     dir="ltr"
@@ -321,7 +322,7 @@ export default function EmployeesPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-1.5">العمر</label>
+                  <label className="block text-sm font-medium text-foreground mb-1.5">{t('Age')}</label>
                   <input
                     type="number"
                     min="0"
@@ -333,7 +334,7 @@ export default function EmployeesPage() {
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-foreground mb-1.5">آخر مكان عمل</label>
+                  <label className="block text-sm font-medium text-foreground mb-1.5">{t('Previous Employer')}</label>
                   <input
                     type="text"
                     value={formData.last_workplace || ""}
@@ -344,7 +345,7 @@ export default function EmployeesPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-1.5">عمله الحالي</label>
+                  <label className="block text-sm font-medium text-foreground mb-1.5">{t('Job Title')}</label>
                   <input
                     type="text"
                     value={formData.current_job || ""}
@@ -355,7 +356,7 @@ export default function EmployeesPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-1.5">الراتب (دينار)</label>
+                  <label className="block text-sm font-medium text-foreground mb-1.5">{t('Base Salary')} ({t('SAR')})</label>
                   <input
                     type="number"
                     min="0"
@@ -378,13 +379,13 @@ export default function EmployeesPage() {
                       className={`w-5 h-5 accent-primary border-orange-300 rounded cursor-pointer ${viewOnly ? 'opacity-70 cursor-not-allowed' : ''}`}
                     />
                     <label htmlFor="social_security" className={`text-sm font-bold text-foreground ${viewOnly ? '' : 'cursor-pointer'}`}>
-                      مشمول في الضمان الاجتماعي
+                      {t('Include Social Security')}
                     </label>
                   </div>
                   
                   {!!formData.has_social_security && (
                     <div className="animate-in fade-in slide-in-from-top-2 duration-300 pl-8 pt-2">
-                      <label className="block text-sm font-medium text-foreground mb-2">قيمة اقتطاع الضمان الشهري (دينار)</label>
+                      <label className="block text-sm font-medium text-foreground mb-2">{t('Social Security Deduction')} ({t('SAR')})</label>
                       <input
                         type="number"
                         min="0"
@@ -393,7 +394,7 @@ export default function EmployeesPage() {
                         disabled={viewOnly}
                         onChange={(e) => setFormData({...formData, social_security_amount: parseFloat(e.target.value) || 0})}
                         className={`w-full sm:w-64 px-4 py-2.5 bg-white border border-orange-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none font-mono text-right ${viewOnly ? 'opacity-70 cursor-not-allowed' : ''}`}
-                        placeholder="أدخل المبلغ..."
+                        placeholder={t('Enter Amount')}
                       />
                       <p className="mt-2 text-xs text-muted-foreground flex items-center gap-1">
                         <span className="w-1 h-1 rounded-full bg-primary/60 inline-block"></span>
@@ -466,7 +467,7 @@ export default function EmployeesPage() {
 
       {createAccountModal.isOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setCreateAccountModal({ ...createAccountModal, isOpen: false })}>
-          <div className="bg-background rounded-3xl shadow-2xl w-full max-w-md p-6 border border-border" onClick={e => e.stopPropagation()} dir="rtl">
+          <div className="bg-background rounded-3xl shadow-2xl w-full max-w-md p-6 border border-border" onClick={e => e.stopPropagation()}>
             <h3 className="text-xl font-bold mb-4 text-foreground border-b border-border pb-3">
               {createAccountModal.isEdit ? "تعديل حساب العامل" : "إنشاء حساب دخول"}
             </h3>

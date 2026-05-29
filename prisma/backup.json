@@ -1,0 +1,295 @@
+{
+  "permission": [
+    {
+      "id": "cmpobmtxh00013i60flhemx3z",
+      "name": "orders:create",
+      "createdAt": "2026-05-27T17:11:37.732Z",
+      "updatedAt": "2026-05-27T17:11:37.732Z"
+    },
+    {
+      "id": "cmpobmtxl00023i60cm5jr7bl",
+      "name": "employees:manage",
+      "createdAt": "2026-05-27T17:11:37.738Z",
+      "updatedAt": "2026-05-27T17:11:37.738Z"
+    },
+    {
+      "id": "cmpobmtxm00033i60uvtr5twl",
+      "name": "reports:view",
+      "createdAt": "2026-05-27T17:11:37.739Z",
+      "updatedAt": "2026-05-27T17:11:37.739Z"
+    },
+    {
+      "id": "cmpobmtxn00043i600y5mhwsq",
+      "name": "settings:manage",
+      "createdAt": "2026-05-27T17:11:37.739Z",
+      "updatedAt": "2026-05-27T17:11:37.739Z"
+    },
+    {
+      "id": "cmpobmtxo00053i60kazwm1q5",
+      "name": "tables:manage",
+      "createdAt": "2026-05-27T17:11:37.740Z",
+      "updatedAt": "2026-05-27T17:11:37.740Z"
+    },
+    {
+      "id": "cmpobmtxo00063i60ao2slqvs",
+      "name": "billing:process",
+      "createdAt": "2026-05-27T17:11:37.741Z",
+      "updatedAt": "2026-05-27T17:11:37.741Z"
+    },
+    {
+      "id": "cmpobmtxq00073i60imf7jurh",
+      "name": "inventory:view",
+      "createdAt": "2026-05-27T17:11:37.742Z",
+      "updatedAt": "2026-05-27T17:11:37.742Z"
+    },
+    {
+      "id": "cmpobmtxq00083i60oq07cnzt",
+      "name": "orders:edit",
+      "createdAt": "2026-05-27T17:11:37.743Z",
+      "updatedAt": "2026-05-27T17:11:37.743Z"
+    },
+    {
+      "id": "cmpobmtxr00093i60cgqiiz89",
+      "name": "orders:delete",
+      "createdAt": "2026-05-27T17:11:37.744Z",
+      "updatedAt": "2026-05-27T17:11:37.744Z"
+    },
+    {
+      "id": "cmpobmtxs000a3i60ewujjflu",
+      "name": "inventory:manage",
+      "createdAt": "2026-05-27T17:11:37.744Z",
+      "updatedAt": "2026-05-27T17:11:37.744Z"
+    },
+    {
+      "id": "cmpobmtxt000b3i609i4rlhe3",
+      "name": "employees:view",
+      "createdAt": "2026-05-27T17:11:37.745Z",
+      "updatedAt": "2026-05-27T17:11:37.745Z"
+    },
+    {
+      "id": "cmpobmtxg00003i60tyriv2y6",
+      "name": "orders:view",
+      "createdAt": "2026-05-27T17:11:37.732Z",
+      "updatedAt": "2026-05-27T17:11:37.732Z"
+    }
+  ],
+  "role": [
+    {
+      "id": "cmpobmty8000c3i60mkq1mv1d",
+      "name": "Owner",
+      "createdAt": "2026-05-27T17:11:37.760Z",
+      "updatedAt": "2026-05-27T17:11:37.760Z"
+    },
+    {
+      "id": "cmpobmtyd000d3i6000x9uqml",
+      "name": "Manager",
+      "createdAt": "2026-05-27T17:11:37.765Z",
+      "updatedAt": "2026-05-27T17:11:37.765Z"
+    },
+    {
+      "id": "cmpobmtyg000e3i60y8x1fvqw",
+      "name": "Cashier",
+      "createdAt": "2026-05-27T17:11:37.768Z",
+      "updatedAt": "2026-05-27T17:11:37.768Z"
+    },
+    {
+      "id": "cmpobmtyk000f3i6081xer0gc",
+      "name": "Waiter",
+      "createdAt": "2026-05-27T17:11:37.772Z",
+      "updatedAt": "2026-05-27T17:11:37.772Z"
+    },
+    {
+      "id": "cmpobmtyl000g3i601xscipmc",
+      "name": "Kitchen",
+      "createdAt": "2026-05-27T17:11:37.774Z",
+      "updatedAt": "2026-05-27T17:11:37.774Z"
+    },
+    {
+      "id": "cmpobmtyn000h3i60znkvtdak",
+      "name": "Bar",
+      "createdAt": "2026-05-27T17:11:37.775Z",
+      "updatedAt": "2026-05-27T17:11:37.775Z"
+    },
+    {
+      "id": "cmpobmtyo000i3i60af9tjxnb",
+      "name": "Accountant",
+      "createdAt": "2026-05-27T17:11:37.777Z",
+      "updatedAt": "2026-05-27T17:11:37.777Z"
+    }
+  ],
+  "user": [
+    {
+      "id": "cmpobmu2k000k3i60gvz3i7z0",
+      "email": "admin@cafe.com",
+      "password": "$2b$10$OXW2WU08mSsQSzB9exyAuu/O3fvjVEb6Zu0qDVcMLje91u3CjmDhK",
+      "name": "Cafe Owner",
+      "roleId": "cmpobmty8000c3i60mkq1mv1d",
+      "createdAt": "2026-05-27T17:11:37.917Z",
+      "updatedAt": "2026-05-27T17:11:37.917Z"
+    }
+  ],
+  "employee": [],
+  "attendance": [],
+  "shift": [],
+  "table": [
+    {
+      "id": "cmpobmu2m000l3i60yqi8s6op",
+      "number": "01",
+      "capacity": 2,
+      "status": "Available",
+      "createdAt": "2026-05-27T17:11:37.919Z",
+      "updatedAt": "2026-05-27T17:11:37.919Z"
+    },
+    {
+      "id": "cmpobmu2t000m3i609uqk47zz",
+      "number": "02",
+      "capacity": 2,
+      "status": "Available",
+      "createdAt": "2026-05-27T17:11:37.925Z",
+      "updatedAt": "2026-05-27T17:11:37.925Z"
+    },
+    {
+      "id": "cmpobmu2u000n3i600dwpeti5",
+      "number": "03",
+      "capacity": 4,
+      "status": "Available",
+      "createdAt": "2026-05-27T17:11:37.926Z",
+      "updatedAt": "2026-05-27T17:11:37.926Z"
+    },
+    {
+      "id": "cmpobmu36000o3i60pg1a0psr",
+      "number": "04",
+      "capacity": 4,
+      "status": "Available",
+      "createdAt": "2026-05-27T17:11:37.939Z",
+      "updatedAt": "2026-05-27T17:11:37.939Z"
+    },
+    {
+      "id": "cmpobmu3a000p3i60rh8mbkd9",
+      "number": "05",
+      "capacity": 6,
+      "status": "Available",
+      "createdAt": "2026-05-27T17:11:37.943Z",
+      "updatedAt": "2026-05-27T17:11:37.943Z"
+    },
+    {
+      "id": "cmpobmu3c000q3i60vka8vunu",
+      "number": "06",
+      "capacity": 8,
+      "status": "Available",
+      "createdAt": "2026-05-27T17:11:37.944Z",
+      "updatedAt": "2026-05-27T17:11:37.944Z"
+    }
+  ],
+  "reservation": [],
+  "coupon": [],
+  "cashierSession": [],
+  "order": [],
+  "category": [
+    {
+      "id": "cmpobmu3d000r3i60obac7suf",
+      "name": "Coffee",
+      "image": null,
+      "createdAt": "2026-05-27T17:11:37.945Z",
+      "updatedAt": "2026-05-27T17:11:37.945Z"
+    },
+    {
+      "id": "cmpobmu3k000v3i601kqunukc",
+      "name": "Bakery",
+      "image": null,
+      "createdAt": "2026-05-27T17:11:37.953Z",
+      "updatedAt": "2026-05-27T17:11:37.953Z"
+    },
+    {
+      "id": "cmpobmu3m000w3i60cofuzw1f",
+      "name": "Breakfast",
+      "image": null,
+      "createdAt": "2026-05-27T17:11:37.954Z",
+      "updatedAt": "2026-05-27T17:11:37.954Z"
+    },
+    {
+      "id": "cmpobmu3n000x3i60pt7yj39b",
+      "name": "Desserts",
+      "image": null,
+      "createdAt": "2026-05-27T17:11:37.955Z",
+      "updatedAt": "2026-05-27T17:11:37.955Z"
+    }
+  ],
+  "product": [
+    {
+      "id": "p-latte",
+      "categoryId": "cmpobmu3d000r3i60obac7suf",
+      "name": "Signature Latte",
+      "description": "Rich espresso with steamed velvety milk",
+      "price": 4.5,
+      "costPrice": 0,
+      "image": null,
+      "isAvailable": true,
+      "activeRecipeId": null,
+      "createdAt": "2026-05-27T17:11:37.948Z",
+      "updatedAt": "2026-05-27T17:11:37.948Z"
+    },
+    {
+      "id": "p-espresso",
+      "categoryId": "cmpobmu3d000r3i60obac7suf",
+      "name": "Double Espresso",
+      "description": "Pure and intense",
+      "price": 3,
+      "costPrice": 0,
+      "image": null,
+      "isAvailable": true,
+      "activeRecipeId": null,
+      "createdAt": "2026-05-27T17:11:37.951Z",
+      "updatedAt": "2026-05-27T17:11:37.951Z"
+    }
+  ],
+  "productVariant": [
+    {
+      "id": "cmpobmu3g000s3i6057zlqfv1",
+      "productId": "p-latte",
+      "name": "Regular",
+      "price": 4.5,
+      "costPrice": 0,
+      "activeRecipeId": null,
+      "createdAt": "2026-05-27T17:11:37.948Z",
+      "updatedAt": "2026-05-27T17:11:37.948Z"
+    },
+    {
+      "id": "cmpobmu3g000t3i60ibj47zml",
+      "productId": "p-latte",
+      "name": "Large",
+      "price": 5.5,
+      "costPrice": 0,
+      "activeRecipeId": null,
+      "createdAt": "2026-05-27T17:11:37.948Z",
+      "updatedAt": "2026-05-27T17:11:37.948Z"
+    },
+    {
+      "id": "cmpobmu3g000u3i602qo8tww7",
+      "productId": "p-latte",
+      "name": "Extra Shot",
+      "price": 6,
+      "costPrice": 0,
+      "activeRecipeId": null,
+      "createdAt": "2026-05-27T17:11:37.948Z",
+      "updatedAt": "2026-05-27T17:11:37.948Z"
+    }
+  ],
+  "modifierGroup": [],
+  "productModifierGroup": [],
+  "modifier": [],
+  "recipe": [],
+  "recipeIngredient": [],
+  "recipeStep": [],
+  "ingredient": [],
+  "productIngredient": [],
+  "inventoryTransaction": [],
+  "payment": [],
+  "orderItem": [],
+  "orderItemModifier": [],
+  "activityLog": [],
+  "notification": [],
+  "setting": [],
+  "session": [],
+  "orderStatusHistory": []
+}

@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "sonner";
+import { initRealtime, cleanupRealtime } from "@/api/socketService";
 
 // Layouts
 import AdminLayout from "@/layouts/AdminLayout";
@@ -18,6 +19,7 @@ import PayrollPage from "@/pages/admin/Payroll";
 import AttendancePage from "@/pages/admin/Attendance";
 import SettingsPage from "@/pages/admin/Settings";
 import ReportsPage from "@/pages/admin/Reports";
+import RecipesPage from "@/pages/admin/Recipes";
 
 // POS Pages
 import POSPage from "@/pages/pos/POS";
@@ -49,6 +51,13 @@ function GlobalLoader() {
 }
 
 export default function App() {
+  useEffect(() => {
+    initRealtime();
+    return () => {
+      cleanupRealtime();
+    };
+  }, []);
+
   return (
     <Router>
       <GlobalLoader />
@@ -65,6 +74,7 @@ export default function App() {
           <Route path="payroll" element={<PayrollPage />} />
           <Route path="attendance" element={<AttendancePage />} />
           <Route path="reports" element={<ReportsPage />} />
+          <Route path="recipes" element={<RecipesPage />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>
 

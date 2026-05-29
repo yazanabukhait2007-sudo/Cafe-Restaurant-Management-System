@@ -13,11 +13,13 @@ import {
   Coffee,
   MonitorPlay,
   Lock,
-  Clock
+  Clock,
+  BookOpen
 } from 'lucide-react';
 import { cn } from '@/utils/utils';
 import LockScreen from '@/components/LockScreen';
 import { WalletCards } from 'lucide-react';
+import SocketStatus from '@/components/SocketStatus';
 
 export default function AdminLayout() {
   const { isAuthenticated, logout, user, isLocked, lock } = useAuthStore();
@@ -36,9 +38,10 @@ export default function AdminLayout() {
   const navItems = [
     { name: t('Dashboard'), path: '/admin/dashboard', icon: LayoutDashboard },
     { name: t('Inventory'), path: '/admin/inventory', icon: Package },
-    { name: 'العمال (السيرة الذاتية)', path: '/admin/employees', icon: Users },
-    { name: 'كشوف الحسابات (الرواتب)', path: '/admin/payroll', icon: WalletCards },
-    { name: 'الحضور والغياب', path: '/admin/attendance', icon: Clock },
+    { name: t('Recipes & Production'), path: '/admin/recipes', icon: BookOpen },
+    { name: t('Employees'), path: '/admin/employees', icon: Users },
+    { name: t('Payroll'), path: '/admin/payroll', icon: WalletCards },
+    { name: t('Attendance'), path: '/admin/attendance', icon: Clock },
     { name: t('Reports'), path: '/admin/reports', icon: FileText },
     { name: t('Settings'), path: '/admin/settings', icon: Settings },
   ];
@@ -121,6 +124,7 @@ export default function AdminLayout() {
         <header className="h-16 border-b border-amber-900/10 bg-card/50 backdrop-blur-md flex items-center justify-between px-8">
            <div></div>
            <div className="flex items-center space-x-4">
+             <SocketStatus />
            </div>
         </header>
         <div className="flex-1 overflow-auto p-8">

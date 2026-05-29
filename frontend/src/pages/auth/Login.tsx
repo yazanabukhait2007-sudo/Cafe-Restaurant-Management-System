@@ -4,6 +4,7 @@ import { useAuthStore } from '@/store/auth';
 import { useSettingsStore } from '@/store/settings';
 import { Coffee, ArrowRight, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import apiClient from '@/api/client';
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -13,7 +14,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) {
       toast.error("Please enter email and password.");
@@ -22,17 +23,46 @@ export default function LoginPage() {
 
     setLoading(true);
     
-    // Simulate API Call
-    setTimeout(() => {
-      setLoading(false);
-      if (email === 'admin@cafe.com' && password === 'Admin12@') {
-        login('fake-token', { id: 'u1', name: 'Admin', role: 'admin', email: 'admin@cafe.com' });
-        navigate('/admin/dashboard');
-        toast.success(`Welcome back to ${cafeName}.`);
+    try {
+      const res = await apiClient.post('/auth/login', { email, password });
+      const { accessToken, user } = res.data;
+      
+      // Map roles like Owner / Manager to lowercase for frontend compatibility
+      let uiRole = 'admin';
+      const dbRole = user.role?.toLowerCase() || 'cashier';
+      if (dbRole === 'owner' || dbRole === 'admin') {
+        uiRole = 'admin';
+      } else if (dbRole === 'manager') {
+        uiRole = 'manager';
+      } else if (dbRole === 'cashier') {
+        uiRole = 'cashier';
+      } else if (dbRole === 'waiter') {
+        uiRole = 'waiter';
+      } else if (dbRole === 'kitchen') {
+        uiRole = 'kitchen';
       } else {
-        toast.error("Invalid email or password.");
+        uiRole = dbRole;
       }
-    }, 800);
+
+      login(accessToken, {
+        id: user.id,
+        name: user.name,
+        role: uiRole as any,
+        email: user.email,
+      });
+
+      if (uiRole === 'admin' || uiRole === 'manager') {
+        navigate('/admin/dashboard');
+      } else {
+        navigate('/pos/tables');
+      }
+      toast.success(`Welcome back to ${cafeName}.`);
+    } catch (err: any) {
+      const errMsg = err.response?.data?.message || "Invalid email or password.";
+      toast.error(errMsg);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

@@ -7,15 +7,18 @@ import { toast } from "sonner";
 import { useWorkersStore } from "@/store/workers";
 import { useAttendanceStore, AttendanceRecord } from "@/store/attendance";
 import { useSettingsStore } from "@/store/settings";
+import { useTranslation } from "react-i18next";
+import i18n from '@/utils/i18n';
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { withOklchPolyfill } from "@/utils/utils";
 
 export default function AttendancePage() {
+  const { t } = useTranslation();
   const { user } = useAuthStore();
   const { workers } = useWorkersStore();
   const { records, upsertRecords } = useAttendanceStore();
-  const { workStartTime, workEndTime, breakDurationMinutes } = useSettingsStore();
+  const { cafeName, workStartTime, workEndTime, breakDurationMinutes } = useSettingsStore();
   
   const [activeTab, setActiveTab] = useState<'daily' | 'monthly'>('daily');
   
@@ -276,14 +279,14 @@ export default function AttendancePage() {
   );
 
   return (
-    <div dir="rtl" className="space-y-6 animate-in fade-in transition-all">
+    <div className="space-y-6 animate-in fade-in transition-all">
       {/* Title Header with tab selectors */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-4">
         <div>
           <h2 className="text-3xl font-light tracking-tight flex items-center gap-3">
-            إدارة الحضور والغياب
+            {t('Attendance Management')}
           </h2>
-          <p className="text-muted-foreground mt-1">تسجيل الدوام اليومي وعرض الكشوفات الشهرية بالتفصيل</p>
+          <p className="text-muted-foreground mt-1">{t('Daily Attendance Logging & Reporting')}</p>
         </div>
 
         {/* Tab Selector Buttons */}
@@ -292,13 +295,13 @@ export default function AttendancePage() {
             onClick={() => setActiveTab('daily')}
             className={`px-5 py-2.5 text-sm font-bold rounded-lg transition-all ${activeTab === 'daily' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:bg-orange-100/50'}`}
           >
-            التسجيل اليومي
+            {t('Daily Attendance')}
           </button>
           <button
             onClick={() => setActiveTab('monthly')}
             className={`px-5 py-2.5 text-sm font-bold rounded-lg transition-all ${activeTab === 'monthly' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:bg-orange-100/50'}`}
           >
-            الكشف الشهري التفصيلي
+            {t('Monthly Detailed Sheet')}
           </button>
         </div>
       </div>
@@ -307,7 +310,7 @@ export default function AttendancePage() {
         <>
           {/* Daily Date Selector Header */}
           <div className="flex justify-between items-center bg-orange-50/30 p-4 rounded-2xl border border-orange-200/60">
-            <span className="font-bold text-foreground text-sm">اختر تاريخ تسجيل الدوام اليومي:</span>
+            <span className="font-bold text-foreground text-sm">{t('Pick daily attendance date')}</span>
             <div className="w-full md:w-64">
                <input 
                   type="date" 
@@ -328,7 +331,7 @@ export default function AttendancePage() {
                       className="bg-primary text-primary-foreground px-6 py-2.5 rounded-xl hover:bg-primary/90 transition-all font-bold flex items-center gap-2 shadow-sm active:scale-[0.98] tracking-tight"
                     >
                       <Plus className="w-5 h-5" />
-                      تسجيل الحضور / الانصراف
+                      {t('Clock In / Out')}
                     </button>
                   </div>
                 )}
@@ -336,17 +339,17 @@ export default function AttendancePage() {
                   <table className="w-full text-right whitespace-nowrap">
                     <thead className="bg-orange-50/50 border-b border-orange-200">
                     <tr>
-                      <th className="px-6 py-4 text-sm font-bold text-foreground w-1/4">الموظف</th>
-                      <th className="px-6 py-4 text-sm font-bold text-foreground w-1/4">الحالة</th>
-                      <th className="px-6 py-4 text-sm font-bold text-foreground w-1/6">وقت الحضور</th>
-                      <th className="px-6 py-4 text-sm font-bold text-foreground w-1/6">وقت الانصراف</th>
-                      <th className="px-6 py-4 text-sm font-bold text-foreground">ملاحظات</th>
+                      <th className="px-6 py-4 text-sm font-bold text-foreground w-1/4">{t('Worker')}</th>
+                      <th className="px-6 py-4 text-sm font-bold text-foreground w-1/4">{t('Status')}</th>
+                      <th className="px-6 py-4 text-sm font-bold text-foreground w-1/6">{t('Check-in Time')}</th>
+                      <th className="px-6 py-4 text-sm font-bold text-foreground w-1/6">{t('Check-out Time')}</th>
+                      <th className="px-6 py-4 text-sm font-bold text-foreground">{t('Notes')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-amber-900/5">
                     {attendanceRecords.length === 0 ? (
                         <tr>
-                            <td colSpan={5} className="px-6 py-12 text-center text-muted-foreground font-medium">لم يتم تسجيل حضور لهذا اليوم</td>
+                            <td colSpan={5} className="px-6 py-12 text-center text-muted-foreground font-medium">{t('No attendance recorded for this day')}</td>
                         </tr>
                     ) : attendanceRecords.map((record) => (
                       <tr key={record.worker_id} className="hover:bg-orange-50/30 transition-colors group">
@@ -356,10 +359,10 @@ export default function AttendancePage() {
                         <td className="px-6 py-4">
                           <div className="flex gap-2">
                             {[
-                              { value: 'present', label: 'حاضر', color: 'bg-emerald-500/10 text-emerald-600' },
-                              { value: 'absent', label: 'غائب', color: 'bg-destructive/10 text-destructive' },
-                              { value: 'vacation', label: 'إجازة', color: 'bg-blue-500/10 text-blue-600' },
-                              { value: 'sick', label: 'مرضي', color: 'bg-amber-500/10 text-amber-600' },
+                              { value: 'present', label: t('Present'), color: 'bg-emerald-500/10 text-emerald-600' },
+                              { value: 'absent', label: t('Absent'), color: 'bg-destructive/10 text-destructive' },
+                              { value: 'vacation', label: t('Vacation'), color: 'bg-blue-500/10 text-blue-600' },
+                              { value: 'sick', label: t('Sick'), color: 'bg-amber-500/10 text-amber-600' },
                             ].filter(option => option.value === record.status).map((option) => (
                               <div
                                 key={option.value}
@@ -397,7 +400,7 @@ export default function AttendancePage() {
         /* Monthly Attendance Sheet Tab View */
         <div className="space-y-6">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-orange-50/30 p-4 rounded-2xl border border-orange-200/60">
-            <span className="font-bold text-foreground text-sm">اختر الشهر والتحكم بالتقرير الشهري:</span>
+            <span className="font-bold text-foreground text-sm">{t('Select month and control monthly report:')}</span>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setMonthlyDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
@@ -407,7 +410,7 @@ export default function AttendancePage() {
               </button>
               
               <span className="text-lg font-black px-4 text-foreground font-sans min-w-[120px] text-center">
-                {format(monthlyDate, 'MMMM yyyy', { locale: ar })}
+                {format(monthlyDate, 'MMMM yyyy', { locale: i18n.language === 'ar' ? ar : undefined })}
               </span>
 
               <button
@@ -421,15 +424,15 @@ export default function AttendancePage() {
 
           <div className="bg-card rounded-2xl shadow-sm border border-amber-900/10 overflow-hidden">
             <div className="p-6 border-b border-amber-900/10 flex flex-col sm:flex-row gap-4 justify-between items-center bg-orange-50/10">
-              <h3 className="font-bold text-lg text-foreground">سجل كشف الموظفين الشهري</h3>
+              <h3 className="font-bold text-lg text-foreground">{t('Monthly Employee Roster Record')}</h3>
               <div className="relative w-full sm:w-64">
-                <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Search className="absolute ltr:left-3 rtl:right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <input
                   type="text"
-                  placeholder="بحث عن موظف..."
+                  placeholder={t('Search Staff')}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pr-9 pl-4 py-2 bg-orange-50/40 border border-orange-200 rounded-xl text-sm focus:ring-2 focus:ring-primary outline-none text-right"
+                  className="w-full ltr:pl-9 rtl:pr-9 ltr:pr-4 rtl:pl-4 py-2 bg-orange-50/40 border border-orange-200 rounded-xl text-sm focus:ring-2 focus:ring-primary outline-none text-right"
                 />
               </div>
             </div>
@@ -438,10 +441,10 @@ export default function AttendancePage() {
               <table className="w-full text-right whitespace-nowrap">
                 <thead className="bg-orange-50/50 border-b border-orange-200">
                   <tr>
-                    <th className="px-6 py-4 text-sm font-semibold text-foreground">الموظف</th>
-                    <th className="px-6 py-4 text-sm font-semibold text-foreground">الوظيفة</th>
-                    <th className="px-6 py-4 text-sm font-semibold text-foreground text-center">أيام الحضور</th>
-                    <th className="px-6 py-4 text-sm font-semibold text-foreground text-center">أيام الغياب</th>
+                    <th className="px-6 py-4 text-sm font-semibold text-foreground">{t('Worker')}</th>
+                    <th className="px-6 py-4 text-sm font-semibold text-foreground">{t('Job Title')}</th>
+                    <th className="px-6 py-4 text-sm font-semibold text-foreground text-center">{t('Check-in Days')}</th>
+                    <th className="px-6 py-4 text-sm font-semibold text-foreground text-center">{t('Absence Days')}</th>
                     <th className="px-6 py-4 text-sm font-semibold text-foreground"></th>
                   </tr>
                 </thead>
@@ -449,7 +452,7 @@ export default function AttendancePage() {
                   {filteredWorkers.length === 0 ? (
                     <tr>
                       <td colSpan={5} className="px-6 py-12 text-center text-muted-foreground">
-                        لا يوجد موظفين مطابقين للبحث
+                        {t('No matching employees found')}
                       </td>
                     </tr>
                   ) : (
@@ -466,15 +469,15 @@ export default function AttendancePage() {
                           <td className="px-6 py-4 text-sm text-muted-foreground">{worker.current_job || '-'}</td>
                           <td className="px-6 py-4 text-center animate-in fade-in transition">
                             <span className="inline-flex items-center justify-center px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
-                              {stats.present} أيام
+                              {stats.present} {t('days')}
                             </span>
                           </td>
                           <td className="px-6 py-4 text-center animate-in fade-in transition">
                             <span className="inline-flex items-center justify-center px-3 py-1 rounded-full text-xs font-bold bg-destructive/10 text-destructive border border-destructive/20">
-                              {stats.absent} أيام
+                              {stats.absent} {t('days')}
                             </span>
                           </td>
-                          <td className="px-6 py-4 text-left">
+                          <td className="px-6 py-4 ltr:text-right rtl:text-left">
                             <div className="flex items-center justify-end gap-2">
                               <button
                                 onClick={() => {
@@ -484,7 +487,7 @@ export default function AttendancePage() {
                                 className="text-primary hover:text-primary-foreground hover:bg-primary/10 px-3 py-1.5 rounded-lg font-bold text-sm tracking-tight transition flex items-center gap-1.5"
                               >
                                 <FileText className="w-4 h-4" />
-                                عرض التفاصيل والتقرير
+                                {t('View Details and Report')}
                               </button>
                               <button
                                 onClick={() => {
@@ -495,7 +498,7 @@ export default function AttendancePage() {
                                   }, 150);
                                 }}
                                 className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors"
-                                title="تحميل ملف PDF"
+                                title={t('Export PDF')}
                               >
                                 <Download className="w-4 h-4" />
                               </button>
@@ -523,7 +526,7 @@ export default function AttendancePage() {
                   {selectedWorker.name}
                 </h3>
                 <p className="text-sm text-muted-foreground mt-1">
-                  سجل تفاصيل الحضور لشهر {format(monthlyDate, "MMMM yyyy", { locale: ar })}
+                  {t('Employee Attendance Details')} {format(monthlyDate, "MMMM yyyy", { locale: i18n.language === 'ar' ? ar : undefined })}
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -532,7 +535,7 @@ export default function AttendancePage() {
                   className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 transition-colors text-sm font-bold shadow-sm"
                 >
                   <Download className="w-4 h-4" />
-                  تصدير PDF
+                  {t('Export PDF')}
                 </button>
                 <button 
                   onClick={() => setShowDetailsModal(false)}
@@ -546,31 +549,31 @@ export default function AttendancePage() {
             <div className="flex-1 overflow-y-auto p-6">
               {/* Printable PDF Content (Isolated Off-screen layout specifically designed for PDF) */}
               <div style={{ position: "absolute", left: "-9999px", top: "-9999px", width: "210mm", minHeight: "297mm" }}>
-                <div ref={reportRef} className="bg-[#ffffff] p-8 w-full text-right text-stone-900" dir="rtl">
+                <div ref={reportRef} className="bg-[#ffffff] p-8 w-full text-right text-stone-900" dir={i18n.dir()}>
                   <div className="flex items-center justify-between mb-8 border-b-2 border-[#15803d] pb-4">
                     <div>
-                      <h1 className="text-2xl font-bold text-[#15803d] mb-2">كشف حضور موظف تفصيلي</h1>
-                      <p className="text-lg text-gray-600">شهر: {format(monthlyDate, "MMMM yyyy", { locale: ar })}</p>
-                      <p className="text-md font-bold text-stone-900 mt-2">الموظف: {selectedWorker.name}</p>
+                      <h1 className="text-2xl font-bold text-[#15803d] mb-2">{t('Detailed Employee Attendance Report')}</h1>
+                      <p className="text-lg text-gray-600">{t('Month')}: {format(monthlyDate, "MMMM yyyy", { locale: i18n.language === 'ar' ? ar : undefined })}</p>
+                      <p className="text-md font-bold text-stone-900 mt-2">{t('Worker')}: {selectedWorker.name}</p>
                     </div>
                     {/* Custom Brand Header Logo Replacement */}
                     <div className="flex flex-col items-end">
-                      <div className="text-2xl font-black text-[#15803d] tracking-tight">لافانت</div>
-                      <div className="text-[10px] text-gray-400 font-mono uppercase tracking-wider">Lavant Co</div>
+                      <div className="text-2xl font-black text-[#15803d] tracking-tight">{cafeName || 'Lavant'}</div>
+                      <div className="text-[10px] text-gray-400 font-mono uppercase tracking-wider">{cafeName || 'Lavant'} Co</div>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4 mb-8">
                     <div className="bg-[#f0fdf4] p-4 rounded-lg border border-[#bcf0da]">
-                      <div className="text-sm text-emerald-700 mb-1 font-bold">إجمالي أيام الحضور</div>
+                      <div className="text-sm text-emerald-700 mb-1 font-bold">{t('Check-in Days')}</div>
                       <div className="text-xl font-bold text-emerald-800">
-                        {records.filter(r => r.worker_id === selectedWorker.id && r.status === 'present' && format(parseISO(r.date), "yyyy-MM") === format(monthlyDate, "yyyy-MM")).length} أيام
+                        {records.filter(r => r.worker_id === selectedWorker.id && r.status === 'present' && format(parseISO(r.date), "yyyy-MM") === format(monthlyDate, "yyyy-MM")).length} {t('days')}
                       </div>
                     </div>
                     <div className="bg-[#fef2f2] p-4 rounded-lg border border-[#fecaca]">
-                      <div className="text-sm text-red-700 mb-1 font-bold">إجمالي أيام الغياب</div>
+                      <div className="text-sm text-red-700 mb-1 font-bold">{t('Absence Days')}</div>
                       <div className="text-xl font-bold text-red-800">
-                        {records.filter(r => r.worker_id === selectedWorker.id && r.status === 'absent' && format(parseISO(r.date), "yyyy-MM") === format(monthlyDate, "yyyy-MM")).length} أيام
+                        {records.filter(r => r.worker_id === selectedWorker.id && r.status === 'absent' && format(parseISO(r.date), "yyyy-MM") === format(monthlyDate, "yyyy-MM")).length} {t('days')}
                       </div>
                     </div>
                   </div>
@@ -578,15 +581,15 @@ export default function AttendancePage() {
                   <div className="flex gap-4 items-start">
                     {/* Column 1: Days 1-16 */}
                     <div className="flex-1">
-                      <table className="w-full text-right border-collapse text-[9px]">
+                      <table className="w-full ltr:text-left rtl:text-right border-collapse text-[9px]">
                         <thead>
                           <tr className="bg-[#15803d] text-[#ffffff]">
-                            <th className="border border-[#15803d] px-1 py-1 font-bold text-center">التاريخ</th>
-                            <th className="border border-[#15803d] px-1 py-1 font-bold text-center">اليوم</th>
-                            <th className="border border-[#15803d] px-1 py-1 font-bold text-center">الحالة</th>
-                            <th className="border border-[#15803d] px-1 py-1 font-bold text-center">دخول</th>
-                            <th className="border border-[#15803d] px-1 py-1 font-bold text-center">خروج</th>
-                            <th className="border border-[#15803d] px-1 py-1 font-bold text-center">ملاحظات</th>
+                            <th className="border border-[#15803d] px-1 py-1 font-bold text-center">{t('Date')}</th>
+                            <th className="border border-[#15803d] px-1 py-1 font-bold text-center">{t('Day')}</th>
+                            <th className="border border-[#15803d] px-1 py-1 font-bold text-center">{t('Status')}</th>
+                            <th className="border border-[#15803d] px-1 py-1 font-bold text-center">{t('In')}</th>
+                            <th className="border border-[#15803d] px-1 py-1 font-bold text-center">{t('Out')}</th>
+                            <th className="border border-[#15803d] px-1 py-1 font-bold text-center">{t('Notes')}</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -596,17 +599,17 @@ export default function AttendancePage() {
                           }).slice(0, 16).map((day, index) => {
                             const dateStr = format(day, "yyyy-MM-dd");
                             const record = records.find(r => r.worker_id === selectedWorker.id && r.date === dateStr);
-                            const dayName = format(day, "EEEE", { locale: ar });
+                            const dayName = format(day, "EEEE", { locale: i18n.language === 'ar' ? ar : undefined });
                             return (
                               <tr key={dateStr} className={index % 2 === 0 ? "bg-[#f9fafb]" : "bg-[#ffffff]"}>
                                 <td className="border border-[#e5e7eb] px-1 py-1 whitespace-nowrap text-center text-xs font-mono">{format(day, "dd/MM")}</td>
                                 <td className="border border-[#e5e7eb] px-1 py-1 whitespace-nowrap text-center">{dayName}</td>
                                 <td className="border border-[#e5e7eb] px-1 py-1 font-bold text-center">
-                                  {record?.status === 'present' ? 'حاضر' : record?.status === 'absent' ? 'غائب' : '-'}
+                                  {record?.status === 'present' ? t('Present') : record?.status === 'absent' ? t('Absent') : '-'}
                                 </td>
                                 <td className="border border-[#e5e7eb] px-1 py-1 text-center font-mono">{(record?.status === 'present' && record?.check_in) || '-'}</td>
                                 <td className="border border-[#e5e7eb] px-1 py-1 text-center font-mono">{(record?.status === 'present' && record?.check_out) || '-'}</td>
-                                <td className="border border-[#e5e7eb] px-1 py-1 text-[8px] break-words max-w-[70px] text-right">{record?.notes || '-'}</td>
+                                <td className="border border-[#e5e7eb] px-1 py-1 text-[8px] break-words max-w-[70px] ltr:text-left rtl:text-right">{record?.notes || '-'}</td>
                               </tr>
                             );
                           })}
@@ -616,15 +619,15 @@ export default function AttendancePage() {
 
                     {/* Column 2: Days 17-31 */}
                     <div className="flex-1">
-                      <table className="w-full text-right border-collapse text-[9px]">
+                      <table className="w-full ltr:text-left rtl:text-right border-collapse text-[9px]">
                         <thead>
                           <tr className="bg-[#15803d] text-[#ffffff]">
-                            <th className="border border-[#15803d] px-1 py-1 font-bold text-center">التاريخ</th>
-                            <th className="border border-[#15803d] px-1 py-1 font-bold text-center">اليوم</th>
-                            <th className="border border-[#15803d] px-1 py-1 font-bold text-center">الحالة</th>
-                            <th className="border border-[#15803d] px-1 py-1 font-bold text-center">دخول</th>
-                            <th className="border border-[#15803d] px-1 py-1 font-bold text-center">خروج</th>
-                            <th className="border border-[#15803d] px-1 py-1 font-bold text-center">ملاحظات</th>
+                            <th className="border border-[#15803d] px-1 py-1 font-bold text-center">{t('Date')}</th>
+                            <th className="border border-[#15803d] px-1 py-1 font-bold text-center">{t('Day')}</th>
+                            <th className="border border-[#15803d] px-1 py-1 font-bold text-center">{t('Status')}</th>
+                            <th className="border border-[#15803d] px-1 py-1 font-bold text-center">{t('In')}</th>
+                            <th className="border border-[#15803d] px-1 py-1 font-bold text-center">{t('Out')}</th>
+                            <th className="border border-[#15803d] px-1 py-1 font-bold text-center">{t('Notes')}</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -634,17 +637,17 @@ export default function AttendancePage() {
                           }).slice(16).map((day, index) => {
                             const dateStr = format(day, "yyyy-MM-dd");
                             const record = records.find(r => r.worker_id === selectedWorker.id && r.date === dateStr);
-                            const dayName = format(day, "EEEE", { locale: ar });
+                            const dayName = format(day, "EEEE", { locale: i18n.language === 'ar' ? ar : undefined });
                             return (
                               <tr key={dateStr} className={index % 2 === 0 ? "bg-[#f9fafb]" : "bg-[#ffffff]"}>
                                 <td className="border border-[#e5e7eb] px-1 py-1 whitespace-nowrap text-center text-xs font-mono">{format(day, "dd/MM")}</td>
                                 <td className="border border-[#e5e7eb] px-1 py-1 whitespace-nowrap text-center">{dayName}</td>
                                 <td className="border border-[#e5e7eb] px-1 py-1 font-bold text-center">
-                                  {record?.status === 'present' ? 'حاضر' : record?.status === 'absent' ? 'غائب' : '-'}
+                                  {record?.status === 'present' ? t('Present') : record?.status === 'absent' ? t('Absent') : '-'}
                                 </td>
                                 <td className="border border-[#e5e7eb] px-1 py-1 text-center font-mono">{(record?.status === 'present' && record?.check_in) || '-'}</td>
                                 <td className="border border-[#e5e7eb] px-1 py-1 text-center font-mono">{(record?.status === 'present' && record?.check_out) || '-'}</td>
-                                <td className="border border-[#e5e7eb] px-1 py-1 text-[8px] break-words max-w-[70px] text-right">{record?.notes || '-'}</td>
+                                <td className="border border-[#e5e7eb] px-1 py-1 text-[8px] break-words max-w-[70px] ltr:text-left rtl:text-right">{record?.notes || '-'}</td>
                               </tr>
                             );
                           })}
@@ -654,7 +657,7 @@ export default function AttendancePage() {
                   </div>
                   
                   <div className="mt-12 pt-4 border-t border-[#e5e7eb] text-center text-[#6b7280] text-xs font-bold">
-                    تم إصدار هذا الكشف تلقائياً من نظام لافانت لإدارة الموارد البشرية
+                    {t('System generated report')}
                   </div>
                 </div>
               </div>
@@ -662,29 +665,29 @@ export default function AttendancePage() {
               {/* In-app UI Representation */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 <div className="bg-emerald-500/10 p-4 rounded-xl border border-emerald-500/20">
-                  <span className="text-emerald-700 text-sm font-bold block mb-1">أيام الحضور لشهر {format(monthlyDate, "MM yyyy")}</span>
+                  <span className="text-emerald-700 text-sm font-bold block mb-1">{t('Check-in Days')} {format(monthlyDate, "MM yyyy")}</span>
                   <span className="text-2xl font-black text-emerald-800">
-                    {records.filter(r => r.worker_id === selectedWorker.id && r.status === 'present' && format(parseISO(r.date), "yyyy-MM") === format(monthlyDate, "yyyy-MM")).length} أيام
+                    {records.filter(r => r.worker_id === selectedWorker.id && r.status === 'present' && format(parseISO(r.date), "yyyy-MM") === format(monthlyDate, "yyyy-MM")).length} {t('days')}
                   </span>
                 </div>
                 <div className="bg-destructive/10 p-4 rounded-xl border border-destructive/20">
-                  <span className="text-destructive text-sm font-bold block mb-1">أيام الغياب لشهر {format(monthlyDate, "MM yyyy")}</span>
+                  <span className="text-destructive text-sm font-bold block mb-1">{t('Absence Days')} {format(monthlyDate, "MM yyyy")}</span>
                   <span className="text-2xl font-black text-destructive">
-                    {records.filter(r => r.worker_id === selectedWorker.id && r.status === 'absent' && format(parseISO(r.date), "yyyy-MM") === format(monthlyDate, "yyyy-MM")).length} أيام
+                    {records.filter(r => r.worker_id === selectedWorker.id && r.status === 'absent' && format(parseISO(r.date), "yyyy-MM") === format(monthlyDate, "yyyy-MM")).length} {t('days')}
                   </span>
                 </div>
               </div>
 
               <div className="border border-amber-900/10 rounded-xl overflow-hidden shadow-sm">
-                <table className="w-full text-right text-sm">
+                <table className="w-full ltr:text-left rtl:text-right text-sm">
                   <thead className="bg-[#fcf8f2] border-b border-orange-200">
                     <tr>
-                      <th className="px-4 py-3 font-bold text-foreground">التاريخ</th>
-                      <th className="px-4 py-3 font-bold text-foreground">اليوم</th>
-                      <th className="px-4 py-3 font-bold text-foreground">الحالة</th>
-                      <th className="px-4 py-3 font-bold text-foreground">دخول</th>
-                      <th className="px-4 py-3 font-bold text-foreground">خروج</th>
-                      <th className="px-4 py-3 font-bold text-foreground">ملاحظات</th>
+                      <th className="px-4 py-3 font-bold text-foreground">{t('Date')}</th>
+                      <th className="px-4 py-3 font-bold text-foreground">{t('Day')}</th>
+                      <th className="px-4 py-3 font-bold text-foreground">{t('Status')}</th>
+                      <th className="px-4 py-3 font-bold text-foreground">{t('In')}</th>
+                      <th className="px-4 py-3 font-bold text-foreground">{t('Out')}</th>
+                      <th className="px-4 py-3 font-bold text-foreground">{t('Notes')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-amber-900/5">
@@ -694,7 +697,7 @@ export default function AttendancePage() {
                     }).map((day) => {
                       const dateStr = format(day, "yyyy-MM-dd");
                       const record = records.find(r => r.worker_id === selectedWorker.id && r.date === dateStr);
-                      const dayName = format(day, "EEEE", { locale: ar });
+                      const dayName = format(day, "EEEE", { locale: i18n.language === 'ar' ? ar : undefined });
                       const isWeekend = getDay(day) === 5 || getDay(day) === 6; // Friday (5) or Saturday (6)
 
                       return (
@@ -704,8 +707,8 @@ export default function AttendancePage() {
                           <td className="px-4 py-3">
                             {record ? (
                               <span className={`px-2 py-1 rounded text-xs font-bold ${ record.status === 'present' ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' : record.status === 'absent' ? 'bg-destructive/10 text-destructive border border-destructive/20' : 'bg-stone-100 text-stone-700' }`}>
-                                {record.status === 'present' ? 'حاضر' :
-                                 record.status === 'absent' ? 'غائب' : '-'}
+                                {record.status === 'present' ? t('Present') :
+                                 record.status === 'absent' ? t('Absent') : '-'}
                               </span>
                             ) : (
                               <span className="text-muted-foreground text-xs font-bold">-</span>
@@ -729,7 +732,7 @@ export default function AttendancePage() {
                 onClick={() => setShowDetailsModal(false)}
                 className="px-6 py-2 bg-background text-foreground rounded-xl border border-border hover:bg-[#fcf8f2] transition font-bold"
               >
-                إغلاق
+                {t('Close')}
               </button>
             </div>
           </div>

@@ -4,7 +4,7 @@ import { cn } from '@/utils/utils';
 import { usePosStore, Table } from '@/store/pos';
 import { useSettingsStore } from '@/store/settings';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Users, Trash2, Minus, Settings2, Check, QrCode, Bell, Receipt, X, CheckCircle2, ChevronRight, Printer } from 'lucide-react';
+import { Plus, Users, Trash2, Minus, Settings2, Check, QrCode, Bell, Receipt, X, CheckCircle2, ChevronRight, Printer, RefreshCw, GitMerge, Scissors } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'motion/react';
 import { QRCodeSVG } from 'qrcode.react';
@@ -30,6 +30,10 @@ export default function TablesPage() {
   const updateTableCapacity = usePosStore(state => state.updateTableCapacity);
   const updateTableStatus = usePosStore(state => state.updateTableStatus);
   const updateTicketStatus = usePosStore(state => state.updateTicketStatus);
+  const transferTable = usePosStore(state => state.transferTable);
+  const mergeTables = usePosStore(state => state.mergeTables);
+  const splitBill = usePosStore(state => state.splitBill);
+
   const [isEditMode, setIsEditMode] = React.useState(false);
   const [selectedTable, setSelectedTable] = React.useState<Table | null>(null);
   const [guestCount, setGuestCount] = React.useState(1);
@@ -38,6 +42,17 @@ export default function TablesPage() {
   const [showCheckoutModal, setShowCheckoutModal] = React.useState(false);
   const [checkoutTable, setCheckoutTable] = React.useState<Table | null>(null);
   const [selectedMethod, setSelectedMethod] = React.useState<'cash' | 'card' | null>(null);
+
+  // Operations Engine UI State
+  const [showOpsModal, setShowOpsModal] = React.useState(false);
+  const [opsTab, setOpsTab] = React.useState<'transfer' | 'merge' | 'split'>('transfer');
+  const [transferSource, setTransferSource] = React.useState<number | null>(null);
+  const [transferTarget, setTransferTarget] = React.useState<number | null>(null);
+  const [mergeSource, setMergeSource] = React.useState<number | null>(null);
+  const [mergeTarget, setMergeTarget] = React.useState<number | null>(null);
+  const [splitTableId, setSplitTableId] = React.useState<number | null>(null);
+  const [splitQuantities, setSplitQuantities] = React.useState<Record<string, number>>({});
+
   const { cafeName, taxRate } = useSettingsStore();
   const { t, i18n } = useTranslation();
 
@@ -131,19 +146,70 @@ export default function TablesPage() {
 
   return (
     <div className="h-full flex flex-col" id="tables-page">
-      <header className="h-16 px-8 border-b border-amber-900/10 flex flex-col md:flex-row md:items-center justify-between bg-white shrink-0 gap-2 overflow-x-auto no-scrollbar py-2 md:py-0 z-10 shadow-sm">
-        <h1 className="text-xl font-medium tracking-tight whitespace-nowrap">{t('Main Dining')}</h1>
-
-        <div className="flex items-center space-x-6 rtl:space-x-reverse text-sm whitespace-nowrap overflow-x-auto">
-          <div className="flex items-center space-x-2 rtl:space-x-reverse"><div className="w-3 h-3 rounded-full bg-orange-300/50 shrink-0"></div><span className="text-muted-foreground">{t('Free')}</span></div>
-          <div className="flex items-center space-x-2 rtl:space-x-reverse"><div className="w-3 h-3 rounded-full bg-primary shrink-0"></div><span className="text-muted-foreground">{t('Occupied')}</span></div>
-          <div className="flex items-center space-x-2 rtl:space-x-reverse"><div className="w-3 h-3 rounded-full bg-blue-500 shrink-0"></div><span className="text-muted-foreground">{t('Reserved')}</span></div>
-          <div className="flex items-center space-x-2 rtl:space-x-reverse"><div className="w-3 h-3 rounded-full bg-amber-500 shrink-0"></div><span className="text-muted-foreground">{t('Cleaning')}</span></div>
+      <header className="min-h-16 px-6 md:px-8 border-b border-amber-900/10 flex flex-col lg:flex-row lg:items-center justify-between bg-white shrink-0 gap-4 py-3 lg:py-0 z-10 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+          <h1 className="text-xl font-medium tracking-tight whitespace-nowrap">{t('Main Dining')}</h1>
           
+          {/* Status Legends */}
+          <div className="flex items-center flex-wrap gap-x-4 gap-y-1 text-sm">
+            <div className="flex items-center space-x-2 rtl:space-x-reverse">
+              <div className="w-3 h-3 rounded-full bg-orange-300/50 shrink-0"></div>
+              <span className="text-muted-foreground text-xs">{t('Free')}</span>
+            </div>
+            <div className="flex items-center space-x-2 rtl:space-x-reverse">
+              <div className="w-3 h-3 rounded-full bg-primary shrink-0"></div>
+              <span className="text-muted-foreground text-xs">{t('Occupied')}</span>
+            </div>
+            <div className="flex items-center space-x-2 rtl:space-x-reverse">
+              <div className="w-3 h-3 rounded-full bg-blue-500 shrink-0"></div>
+              <span className="text-muted-foreground text-xs">{t('Reserved')}</span>
+            </div>
+            <div className="flex items-center space-x-2 rtl:space-x-reverse">
+              <div className="w-3 h-3 rounded-full bg-amber-500 shrink-0"></div>
+              <span className="text-muted-foreground text-xs">{t('Cleaning')}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Café Operations & Control CTAs */}
+        <div className="flex flex-wrap items-center gap-2 lg:gap-3">
+          <button 
+            onClick={() => {
+              setShowOpsModal(true);
+              const occupiedTables = tables.filter(t => t.status === 'occupied');
+              if (occupiedTables.length > 0) {
+                setTransferSource(occupiedTables[0].id);
+                setMergeSource(occupiedTables[0].id);
+                setSplitTableId(occupiedTables[0].id);
+                if (occupiedTables.length > 1) {
+                  setMergeTarget(occupiedTables[1].id);
+                } else {
+                  setMergeTarget(null);
+                }
+              } else {
+                setTransferSource(null);
+                setMergeSource(null);
+                setSplitTableId(null);
+              }
+
+              const freeTables = tables.filter(t => t.status === 'free');
+              if (freeTables.length > 0) {
+                setTransferTarget(freeTables[0].id);
+              } else {
+                setTransferTarget(null);
+              }
+              setSplitQuantities({});
+            }}
+            className="flex items-center space-x-2 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg transition-colors shadow-sm cursor-pointer whitespace-nowrap"
+          >
+            <Settings2 className="w-4 h-4 text-white" />
+            <span className="font-semibold text-xs">{t('POS Café Operations')}</span>
+          </button>
+
           <button 
             onClick={() => setIsEditMode(!isEditMode)}
             className={cn(
-               "flex items-center space-x-2 px-3 py-1.5 rounded-lg transition-colors shadow-sm ml-4 rtl:mr-4 rtl:ml-0",
+               "flex items-center space-x-2 px-3 py-1.5 rounded-lg transition-colors shadow-sm whitespace-nowrap text-xs font-semibold",
                isEditMode ? "bg-stone-200 text-stone-900 border border-stone-300" : "bg-white text-stone-600 border border-stone-200 hover:bg-stone-50"
             )}
           >
@@ -153,7 +219,7 @@ export default function TablesPage() {
 
           <button 
             onClick={() => addTable(4)}
-            className="flex items-center space-x-2 bg-primary text-primary-foreground px-3 py-1.5 rounded-lg hover:bg-primary/90 transition-colors shadow-sm"
+            className="flex items-center space-x-2 bg-primary text-primary-foreground px-3 py-1.5 rounded-lg hover:bg-primary/90 transition-colors shadow-sm whitespace-nowrap text-xs font-semibold"
           >
             <Plus className="w-4 h-4" />
             <span>{t('Add Table')}</span>
@@ -435,10 +501,406 @@ export default function TablesPage() {
             </div>
           )}
 
+          {/* Operations Modal */}
+          {showOpsModal && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="bg-white rounded-[2rem] shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh] border border-stone-200"
+              >
+                <header className="h-16 flex items-center justify-between px-6 border-b border-stone-100 bg-stone-50/50">
+                  <h2 className="text-lg font-bold text-stone-900 flex items-center gap-2">
+                    <Settings2 className="w-5 h-5 text-amber-600" />
+                    <span>{t('POS Café Operations')}</span>
+                  </h2>
+                  <button 
+                    onClick={() => {
+                      setShowOpsModal(false);
+                    }}
+                    className="w-8 h-8 flex items-center justify-center rounded-full bg-stone-100 hover:bg-stone-200 text-stone-600 transition"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </header>
+
+                {/* Operations Tabs */}
+                <div className="flex border-b border-stone-100 bg-stone-50/30">
+                  <button
+                    onClick={() => setOpsTab('transfer')}
+                    className={cn(
+                      "flex-1 py-3 text-center text-sm font-semibold transition border-b-2 flex items-center justify-center gap-2",
+                      opsTab === 'transfer'
+                        ? "border-amber-600 text-amber-600 bg-white"
+                        : "border-transparent text-stone-500 hover:text-stone-900 hover:bg-stone-50/50"
+                    )}
+                  >
+                    <RefreshCw className={cn("w-4 h-4", opsTab === 'transfer' ? "animate-spin-slow" : "")} />
+                    <span>{t('Transfer Table')}</span>
+                  </button>
+                  <button
+                    onClick={() => setOpsTab('merge')}
+                    className={cn(
+                      "flex-1 py-3 text-center text-sm font-semibold transition border-b-2 flex items-center justify-center gap-2",
+                      opsTab === 'merge'
+                        ? "border-amber-600 text-amber-600 bg-white"
+                        : "border-transparent text-stone-500 hover:text-stone-900 hover:bg-stone-50/50"
+                    )}
+                  >
+                    <GitMerge className="w-4 h-4" />
+                    <span>{t('Merge Tables')}</span>
+                  </button>
+                  <button
+                    onClick={() => setOpsTab('split')}
+                    className={cn(
+                      "flex-1 py-3 text-center text-sm font-semibold transition border-b-2 flex items-center justify-center gap-2",
+                      opsTab === 'split'
+                        ? "border-amber-600 text-amber-600 bg-white"
+                        : "border-transparent text-stone-500 hover:text-stone-900 hover:bg-stone-50/50"
+                    )}
+                  >
+                    <GitMerge className="w-4 h-4 rotate-90" />
+                    <span>{t('Split Bill')}</span>
+                  </button>
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-6 md:p-8">
+                  {/* TRANSFER TAB */}
+                  {opsTab === 'transfer' && (
+                    <div className="space-y-6">
+                      <div className="bg-amber-50 rounded-xl p-4 border border-amber-100 text-amber-800 text-sm">
+                        {t('Transfer Table Info')}
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                          <label className="text-xs font-bold text-stone-500 uppercase tracking-wider block">
+                            {t('Source Table')}
+                          </label>
+                          <select
+                            value={transferSource || ''}
+                            onChange={(e) => {
+                              const val = e.target.value ? parseInt(e.target.value) : null;
+                              setTransferSource(val);
+                            }}
+                            className="w-full bg-stone-50 border border-stone-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 text-stone-800"
+                          >
+                            <option value="">{t('Select occupied table...')}</option>
+                            {tables.filter(t => t.status === 'occupied').map(t => (
+                              <option key={t.id} value={t.id}>
+                                {t.name} - ${(t.activeOrderTotal || 0).toFixed(2)}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="text-xs font-bold text-stone-500 uppercase tracking-wider block">
+                            {t('Destination Table')}
+                          </label>
+                          <select
+                            value={transferTarget || ''}
+                            onChange={(e) => {
+                              const val = e.target.value ? parseInt(e.target.value) : null;
+                              setTransferTarget(val);
+                            }}
+                            className="w-full bg-stone-50 border border-stone-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 text-stone-800"
+                          >
+                            <option value="">{t('Select empty table...')}</option>
+                            {tables.filter(t => t.status === 'free' || t.status === 'cleaning').map(t => (
+                              <option key={t.id} value={t.id}>
+                                {t.name} (Cap: {t.capacity})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => {
+                          if (!transferSource || !transferTarget) {
+                            toast.error(t('Please select both source and destination tables'));
+                            return;
+                          }
+                          const res = transferTable(transferSource, transferTarget);
+                          if (res.success) {
+                            toast.success(t('Table transferred successfully'));
+                            setShowOpsModal(false);
+                          } else {
+                            toast.error(res.error || 'Failed to transfer table');
+                          }
+                        }}
+                        className="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-3.5 rounded-xl transition shadow-md shadow-amber-600/10 mt-4 text-sm"
+                      >
+                        {t('Confirm Table Transfer')}
+                      </button>
+                    </div>
+                  )}
+
+                  {/* MERGE TAB */}
+                  {opsTab === 'merge' && (
+                    <div className="space-y-6">
+                      <div className="bg-amber-50 rounded-xl p-4 border border-amber-100 text-amber-800 text-sm">
+                        {t('Merge Tables Info')}
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                          <label className="text-xs font-bold text-stone-500 uppercase tracking-wider block">
+                            {t('From Table')}
+                          </label>
+                          <select
+                            value={mergeSource || ''}
+                            onChange={(e) => {
+                              const val = e.target.value ? parseInt(e.target.value) : null;
+                              setMergeSource(val);
+                            }}
+                            className="w-full bg-stone-50 border border-stone-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 text-stone-800"
+                          >
+                            <option value="">{t('Select source table...')}</option>
+                            {tables.filter(t => t.status === 'occupied').map(t => (
+                              <option key={t.id} value={t.id}>
+                                {t.name} - ${(t.activeOrderTotal || 0).toFixed(2)}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="text-xs font-bold text-stone-500 uppercase tracking-wider block">
+                            {t('To Table')}
+                          </label>
+                          <select
+                            value={mergeTarget || ''}
+                            onChange={(e) => {
+                              const val = e.target.value ? parseInt(e.target.value) : null;
+                              setMergeTarget(val);
+                            }}
+                            className="w-full bg-stone-50 border border-stone-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 text-stone-800"
+                          >
+                            <option value="">{t('Select recipient table...')}</option>
+                            {tables.filter(t => t.status === 'occupied' && t.id !== mergeSource).map(t => (
+                              <option key={t.id} value={t.id}>
+                                {t.name} - ${(t.activeOrderTotal || 0).toFixed(2)}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => {
+                          if (!mergeSource || !mergeTarget) {
+                            toast.error(t('Please select valid source and destination tables to merge'));
+                            return;
+                          }
+                          const res = mergeTables(mergeSource, mergeTarget);
+                          if (res.success) {
+                            toast.success(t('Tables merged successfully'));
+                            setShowOpsModal(false);
+                          } else {
+                            toast.error(res.error || 'Failed to merge tables');
+                          }
+                        }}
+                        className="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-3.5 rounded-xl transition shadow-md shadow-amber-600/10 mt-4 text-sm"
+                      >
+                        {t('Confirm Tables Merge')}
+                      </button>
+                    </div>
+                  )}
+
+                  {/* SPLIT BILL TAB */}
+                  {opsTab === 'split' && (
+                    <div className="space-y-6">
+                      <div className="bg-amber-50 rounded-xl p-4 border border-amber-100 text-amber-800 text-sm">
+                        {t('Split Bill Info')}
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-stone-500 uppercase tracking-wider block">
+                          {t('Select Table to Split')}
+                        </label>
+                        <select
+                          value={splitTableId || ''}
+                          onChange={(e) => {
+                            const val = e.target.value ? parseInt(e.target.value) : null;
+                            setSplitTableId(val);
+                            setSplitQuantities({});
+                          }}
+                          className="w-full bg-stone-50 border border-stone-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 text-stone-800"
+                        >
+                          <option value="">{t('Select active table...')}</option>
+                          {tables.filter(t => t.status === 'occupied').map(t => (
+                            <option key={t.id} value={t.id}>
+                              {t.name} - ${(t.activeOrderTotal || 0).toFixed(2)}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {splitTableId && (() => {
+                        const targetTable = tables.find(t => t.id === splitTableId);
+                        if (!targetTable || !targetTable.activeOrder || targetTable.activeOrder.length === 0) {
+                          return (
+                            <div className="text-center py-8 text-stone-400 text-sm">
+                              {t('No active items on this table currently.')}
+                            </div>
+                          );
+                        }
+
+                        // Calculate total for split items
+                        const calculatedSplitTotal = targetTable.activeOrder.reduce((sum, item) => {
+                          const qty = splitQuantities[item.id] || 0;
+                          return sum + (item.price * qty);
+                        }, 0);
+
+                        return (
+                          <div className="space-y-4">
+                            <div className="border border-stone-200 rounded-2xl overflow-hidden">
+                              <table className="w-full text-sm">
+                                <thead className="bg-stone-50 border-b border-stone-100 text-xs text-stone-500 font-bold uppercase tracking-wider">
+                                  <tr>
+                                    <th className="px-4 py-3 text-left rtl:text-right">{i18n.language === 'ar' || document.documentElement.dir === 'rtl' ? 'الصنف' : 'Item'}</th>
+                                    <th className="px-4 py-3 text-center">{i18n.language === 'ar' || document.documentElement.dir === 'rtl' ? 'السعر' : 'Price'}</th>
+                                    <th className="px-4 py-3 text-center">{i18n.language === 'ar' || document.documentElement.dir === 'rtl' ? 'الكمية النشطة' : 'Active Qty'}</th>
+                                    <th className="px-4 py-3 text-center">{i18n.language === 'ar' || document.documentElement.dir === 'rtl' ? 'كمية الدفع' : 'Payment Qty'}</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-stone-100 text-stone-800">
+                                  {targetTable.activeOrder.map((item) => {
+                                    const selectedQty = splitQuantities[item.id] || 0;
+                                    return (
+                                      <tr key={item.id} className="hover:bg-stone-50/50">
+                                        <td className="px-4 py-3 text-left rtl:text-right font-medium">
+                                          <div>{item.name}</div>
+                                          {item.notes && <div className="text-[10px] text-stone-400 italic">({item.notes})</div>}
+                                        </td>
+                                        <td className="px-4 py-3 text-center font-mono">${item.price.toFixed(2)}</td>
+                                        <td className="px-4 py-3 text-center font-bold text-stone-505">{item.quantity}</td>
+                                        <td className="px-4 py-3 text-center">
+                                          <div className="flex items-center justify-center gap-2">
+                                            <button
+                                              onClick={() => {
+                                                setSplitQuantities(prev => ({
+                                                  ...prev,
+                                                  [item.id]: Math.max(0, (prev[item.id] || 0) - 1)
+                                                }));
+                                              }}
+                                              disabled={selectedQty <= 0}
+                                              className="w-7 h-7 rounded-full border border-stone-200 flex items-center justify-center text-stone-600 hover:bg-stone-50 hover:border-stone-300 transition disabled:opacity-40"
+                                            >
+                                              -
+                                            </button>
+                                            <span className="w-6 font-bold text-sm font-mono">{selectedQty}</span>
+                                            <button
+                                              onClick={() => {
+                                                setSplitQuantities(prev => ({
+                                                  ...prev,
+                                                  [item.id]: Math.min(item.quantity, (prev[item.id] || 0) + 1)
+                                                }));
+                                              }}
+                                              disabled={selectedQty >= item.quantity}
+                                              className="w-7 h-7 rounded-full border border-stone-200 flex items-center justify-center text-stone-600 hover:bg-stone-50 hover:border-stone-300 transition disabled:opacity-40"
+                                            >
+                                              +
+                                            </button>
+                                          </div>
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+
+                            {/* Split Total summary */}
+                            <div className="bg-stone-50 rounded-2xl p-5 border border-stone-100 flex items-center justify-between">
+                              <div>
+                                <div className="text-xs font-bold text-stone-400 uppercase tracking-wider">{i18n.language === 'ar' || document.documentElement.dir === 'rtl' ? 'المبلغ المراد سداده جزئياً' : 'Split-Payment Action Total'}</div>
+                                <div className="text-[10px] text-stone-400 mt-1">*{i18n.language === 'ar' || document.documentElement.dir === 'rtl' ? 'شامل ضريبة ضريبة القيمة المضافة المحسوبة' : 'Tax is calculated at overall settlement.'}</div>
+                              </div>
+                              <div className="text-right">
+                                <span className="text-2xl font-bold font-mono text-stone-900">${calculatedSplitTotal.toFixed(2)}</span>
+                              </div>
+                            </div>
+
+                            {/* Pay Split Bill Buttons */}
+                            <div className="flex flex-col sm:flex-row gap-2 mt-4">
+                              <button
+                                onClick={() => {
+                                  const list = Object.entries(splitQuantities)
+                                    .map(([itemId, quantity]) => ({ itemId, quantity }))
+                                    .filter(item => item.quantity > 0);
+                                  if (list.length === 0) {
+                                    toast.error(
+                                      i18n.language === 'ar' || document.documentElement.dir === 'rtl'
+                                        ? 'الرجاء اختيار صنف لتسويته'
+                                        : 'Please select items to pay off'
+                                    );
+                                    return;
+                                  }
+                                  const res = splitBill(splitTableId, list, 'cash');
+                                  if (res.success) {
+                                    toast.success(
+                                      i18n.language === 'ar' || document.documentElement.dir === 'rtl'
+                                        ? 'تم معالجة الدفع النقدي جزئياً بنجاح'
+                                        : 'Partial split bill cash payment processed successfully!'
+                                    );
+                                    setSplitQuantities({});
+                                    setShowOpsModal(false);
+                                  } else {
+                                    toast.error(res.error || 'Split operation failed');
+                                  }
+                                }}
+                                className="flex-1 bg-white border-2 border-stone-200 text-stone-700 font-bold h-12 rounded-xl flex items-center justify-center gap-2 hover:bg-stone-50 transition text-sm"
+                              >
+                                {i18n.language === 'ar' || document.documentElement.dir === 'rtl' ? 'دفع نقدي (كاش)' : 'Pay Cash'}
+                              </button>
+                              <button
+                                onClick={() => {
+                                  const list = Object.entries(splitQuantities)
+                                    .map(([itemId, quantity]) => ({ itemId, quantity }))
+                                    .filter(item => item.quantity > 0);
+                                  if (list.length === 0) {
+                                    toast.error(
+                                      i18n.language === 'ar' || document.documentElement.dir === 'rtl'
+                                        ? 'الرجاء اختيار صنف لتسويته'
+                                        : 'Please select items to pay off'
+                                    );
+                                    return;
+                                  }
+                                  const res = splitBill(splitTableId, list, 'card');
+                                  if (res.success) {
+                                    toast.success(
+                                      i18n.language === 'ar' || document.documentElement.dir === 'rtl'
+                                        ? 'تم معالجة الدفع بالشبكة جزئياً بنجاح'
+                                        : 'Partial split bill card payment processed successfully!'
+                                    );
+                                    setSplitQuantities({});
+                                    setShowOpsModal(false);
+                                  } else {
+                                    toast.error(res.error || 'Split operation failed');
+                                  }
+                                }}
+                                className="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-bold h-12 rounded-xl flex items-center justify-center gap-2 hover:brightness-110 transition text-sm"
+                              >
+                                {i18n.language === 'ar' || document.documentElement.dir === 'rtl' ? 'دفع شبكة' : 'Pay via Card'}
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            </div>
+          )}
+
           {/* Subtle background grid pattern */}
           <div className="absolute inset-0 -z-10 h-full w-full bg-[#FDFBF7] bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:4rem_4rem]"></div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6 max-w-7xl mx-auto">
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-3 gap-4 md:gap-5 max-w-6xl mx-auto">
              {tables.map(table => {
                const activeTicket = tickets.find(t => t.table === table.name && !['CLOSED', 'CANCELLED'].includes(t.status));
                const isAr = document.documentElement.dir === 'rtl' || i18n?.language === 'ar';

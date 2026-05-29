@@ -105,14 +105,26 @@ export default function KDSPage() {
                       {item.quantity}
                     </div>
                     <div className="flex-1 min-w-0 pt-1">
-                       <p className={`text-sm font-bold leading-none ${item.completed ? 'line-through text-stone-400' : 'text-stone-800'}`}>
-                         {item.name}
-                       </p>
-                       {item.notes && (
-                         <p className="text-amber-600 text-xs mt-1.5 font-bold italic">
-                           * {item.notes}
-                         </p>
-                       )}
+                        <p className={`text-sm font-bold leading-none ${item.completed ? 'line-through text-stone-400' : 'text-stone-800'}`}>
+                          {item.name}
+                        </p>
+                        
+                        {/* Display Modifiers for Kitchen */}
+                        {item.modifiers && item.modifiers.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1.5 font-sans">
+                            {item.modifiers.map((mod: any) => (
+                              <span key={mod.id} className="text-[9px] bg-sky-50 text-sky-700 px-1.5 py-0.5 rounded-md font-bold border border-sky-100 uppercase tracking-tighter">
+                                + {mod.name}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+
+                        {item.notes && (
+                          <p className="text-amber-600 text-[10px] mt-1.5 font-bold italic leading-tight p-1 bg-amber-50 rounded border border-amber-100">
+                             {item.notes}
+                          </p>
+                        )}
                     </div>
                   </div>
                 ))}

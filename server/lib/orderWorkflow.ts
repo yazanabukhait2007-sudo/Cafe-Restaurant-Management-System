@@ -1,4 +1,5 @@
 import { prisma } from "./prisma.ts";
+import { validateAndDeductStock, revertOrderStock } from "./inventoryEngine.ts";
 
 export type OrderStatus =
   | "DRAFT"
@@ -54,7 +55,14 @@ export async function processOrderTransition(
     // Fetch the order with current status & table
     const order = await tx.order.findUnique({
       where: { id: orderId },
-      include: { table: true },
+      include: { 
+        table: true, 
+        items: {
+          include: {
+            modifiers: true
+          }
+        } 
+      },
     });
 
     if (!order) {
@@ -99,13 +107,36 @@ export async function processOrderTransition(
 
     // Calculate timestamps to set
     const now = new Date();
-    if (targetStatus === "CONFIRMED") updateData.confirmedAt = now;
+    if (targetStatus === "CONFIRMED") {
+      updateData.confirmedAt = now;
+      const invItems = order.items.map((it: any) => ({
+        productId: it.productId,
+        productVariantId: it.productVariantId,
+        modifierIds: it.modifiers.map((m: any) => m.modifierId),
+        name: "",
+        quantity: it.quantity,
+      }));
+      await validateAndDeductStock(orderId, invItems, userId, tx);
+    }
     else if (targetStatus === "PREPARING") updateData.preparingAt = now;
     else if (targetStatus === "READY") updateData.readyAt = now;
     else if (targetStatus === "SERVED") updateData.servedAt = now;
     else if (targetStatus === "PAID") updateData.paidAt = now;
     else if (targetStatus === "CLOSED") updateData.closedAt = now;
-    else if (targetStatus === "CANCELLED") updateData.cancelledAt = now;
+    else if (targetStatus === "CANCELLED") {
+      updateData.cancelledAt = now;
+      const stockDeductedStates = ["CONFIRMED", "PREPARING", "READY", "SERVED", "PAID"];
+      if (stockDeductedStates.includes(currentStatus)) {
+        const invItems = order.items.map((it: any) => ({
+          productId: it.productId,
+          productVariantId: it.productVariantId,
+          modifierIds: it.modifiers.map((m: any) => m.modifierId),
+          name: "",
+          quantity: it.quantity,
+        }));
+        await revertOrderStock(orderId, invItems, userId, false, tx);
+      }
+    }
 
     // D. Safely free up or lock tables depending on state
     if (targetStatus === "CLOSED" || targetStatus === "CANCELLED") {

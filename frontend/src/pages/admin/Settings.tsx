@@ -29,7 +29,7 @@ export default function SettingsPage() {
     setCafeName(localName);
     updateHRSettings(hrSettings);
     updatePOSSettings({ waterPricePerGuest: localWaterPrice, taxRate: localTaxRate });
-    toast.success(t('Settings saved successfully') || 'تم حفظ الإعدادات بنجاح');
+    toast.success(t('Settings saved successfully'));
   };
 
   const changeLanguage = (lng: string) => {
@@ -40,7 +40,7 @@ export default function SettingsPage() {
     <div className="space-y-6 animate-in fade-in transition-all">
       <div>
         <h2 className="text-3xl font-light tracking-tight">{t('System Settings')}</h2>
-        <p className="text-muted-foreground mt-1">{t('Configure cafe parameters and system defaults.') || 'Configure cafe parameters and system defaults.'}</p>
+        <p className="text-muted-foreground mt-1">{t('Configure cafe parameters and system defaults.')}</p>
       </div>
 
       <div className="grid grid-cols-1 gap-6 max-w-4xl">
@@ -49,16 +49,16 @@ export default function SettingsPage() {
             <CardTitle>{t('Language')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 border-t border-amber-900/10 pt-6">
-            <div className="flex space-x-4 space-x-reverse rtl:space-x-reverse">
+            <div className="flex gap-4">
               <button 
                 onClick={() => changeLanguage('en')}
-                className={`px-4 py-2 rounded-lg font-medium transition ${i18n.language === 'en' ? 'bg-primary text-primary-foreground' : 'bg-orange-100/50 text-stone-600'}`}
+                className={`px-6 py-2.5 rounded-xl font-bold transition-all ${i18n.language === 'en' ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20' : 'bg-stone-100 text-stone-500 hover:bg-stone-200'}`}
               >
                 {t('English')}
               </button>
               <button 
                 onClick={() => changeLanguage('ar')}
-                className={`px-4 py-2 mx-2 rounded-lg font-medium transition ${i18n.language === 'ar' ? 'bg-primary text-primary-foreground' : 'bg-orange-100/50 text-stone-600'}`}
+                className={`px-6 py-2.5 rounded-xl font-bold transition-all ${i18n.language === 'ar' ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20' : 'bg-stone-100 text-stone-500 hover:bg-stone-200'}`}
               >
                 {t('Arabic')}
               </button>
@@ -106,12 +106,12 @@ export default function SettingsPage() {
 
         <Card className="bg-card border-amber-900/10">
           <CardHeader>
-            <CardTitle>إعدادات الحضور والدوام (الموارد البشرية)</CardTitle>
+            <CardTitle>{t('HR Settings')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 border-t border-amber-900/10 pt-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                <div className="space-y-1">
-                 <label className="text-muted-foreground block text-xs uppercase tracking-wider">وقت بدء الدوام</label>
+                 <label className="text-muted-foreground block text-xs uppercase tracking-wider">{t('Work Start Time')}</label>
                  <input 
                    type="time" 
                    value={hrSettings.workStartTime} 
@@ -120,7 +120,7 @@ export default function SettingsPage() {
                  />
                </div>
                <div className="space-y-1">
-                 <label className="text-muted-foreground block text-xs uppercase tracking-wider">وقت نهاية الدوام</label>
+                 <label className="text-muted-foreground block text-xs uppercase tracking-wider">{t('Work End Time')}</label>
                  <input 
                    type="time" 
                    value={hrSettings.workEndTime} 
@@ -129,7 +129,7 @@ export default function SettingsPage() {
                  />
                </div>
                <div className="space-y-1">
-                 <label className="text-muted-foreground block text-xs uppercase tracking-wider">مدة الاستراحة (بالدقائق)</label>
+                 <label className="text-muted-foreground block text-xs uppercase tracking-wider">{t('Break Duration (Minutes)')}</label>
                  <input 
                    type="number" 
                    value={hrSettings.breakDurationMinutes} 
@@ -138,7 +138,7 @@ export default function SettingsPage() {
                  />
                </div>
                <div className="space-y-1">
-                 <label className="text-muted-foreground block text-xs uppercase tracking-wider">أجرة الدوام الإضافي (للساعة الواحدة)</label>
+                 <label className="text-muted-foreground block text-xs uppercase tracking-wider">{t('Overtime Rate per Hour')}</label>
                  <div className="relative">
                    <input 
                      type="number"
@@ -147,7 +147,7 @@ export default function SettingsPage() {
                      onChange={(e) => setHrSettings({ ...hrSettings, overtimeRatePerHour: Number(e.target.value) })}
                      className="w-full bg-orange-100/50 border border-orange-300 rounded-lg p-2 ltr:pl-8 rtl:pr-8 focus:border-primary outline-none transition font-mono" 
                    />
-                   <span className="absolute top-2.5 rtl:right-2.5 ltr:left-2.5 text-muted-foreground font-mono text-sm">د.أ</span>
+                   <span className="absolute top-2.5 rtl:right-2.5 ltr:left-2.5 text-muted-foreground font-mono text-sm">{t('SAR')}</span>
                  </div>
                </div>
             </div>

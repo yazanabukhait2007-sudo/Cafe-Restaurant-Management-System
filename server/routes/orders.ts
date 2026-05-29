@@ -33,6 +33,13 @@ router.post("/", authenticate, authorize(["orders:create"]), orderCreationLimite
     let subtotal = 0;
     const orderItemsData = [];
 
+    // Query for all modifiers in all items to avoid N+1
+    const allModifierIds = items.flatMap((i: any) => i.modifiers || []);
+    const dbModifiers = await prisma.modifier.findMany({
+      where: { id: { in: allModifierIds } }
+    });
+    const dbModifiersMap = new Map(dbModifiers.map(m => [m.id, m]));
+
     for (const item of items) {
       const dbProduct = dbProductsMap.get(item.productId);
       if (!dbProduct) {
@@ -53,16 +60,37 @@ router.post("/", authenticate, authorize(["orders:create"]), orderCreationLimite
         trustedPrice = variant.price;
       }
 
-      const itemTotal = trustedPrice * item.quantity;
+      // Add modifier prices
+      let modifiersTotal = 0;
+      const itemModifiers = [];
+      if (item.modifiers && item.modifiers.length > 0) {
+        for (const modId of item.modifiers) {
+          const dbMod = dbModifiersMap.get(modId);
+          if (dbMod) {
+            modifiersTotal += dbMod.price;
+            itemModifiers.push({
+              modifierId: modId,
+              price: dbMod.price,
+              quantity: 1
+            });
+          }
+        }
+      }
+
+      const unitPriceWithModifiers = trustedPrice + modifiersTotal;
+      const itemTotal = unitPriceWithModifiers * item.quantity;
       subtotal += itemTotal;
 
       orderItemsData.push({
         productId: item.productId,
         productVariantId: item.productVariantId || null,
         quantity: item.quantity,
-        unitPrice: trustedPrice,
+        unitPrice: trustedPrice, // Base unit price
         totalPrice: itemTotal,
         notes: item.notes || null,
+        modifiers: {
+          create: itemModifiers
+        }
       });
     }
 

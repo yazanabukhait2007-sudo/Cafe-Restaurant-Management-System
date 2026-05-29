@@ -10,7 +10,7 @@ const apiClient = axios.create({
 
 apiClient.interceptors.request.use((config) => {
   const token = useAuthStore.getState().token;
-  if (token) {
+  if (token && token !== 'fake-token' && token.includes('.')) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;

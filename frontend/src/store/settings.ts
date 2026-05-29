@@ -4,6 +4,7 @@ import { persist } from 'zustand/middleware';
 interface SettingsState {
   cafeName: string;
   setCafeName: (name: string) => void;
+  currency: string;
   // HR Settings
   workStartTime: string;
   workEndTime: string;
@@ -36,6 +37,7 @@ export const useSettingsStore = create<SettingsState>()(
       overtimeRatePerHour: 5, // e.g. 5 JOD per hour
       waterPricePerGuest: 1, // Default water price
       taxRate: 10, // Default tax rate
+      currency: 'JOD',
       updateHRSettings: (settings) => set(settings),
       updatePOSSettings: (settings) => set((state) => ({ ...state, ...settings })),
     }),

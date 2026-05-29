@@ -25,7 +25,17 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       token: null,
       isLocked: false,
-      isAuthenticated: () => !!get().token,
+      isAuthenticated: () => {
+        const token = get().token;
+        if (!token) return false;
+        if (token === 'fake-token' || !token.includes('.')) {
+          setTimeout(() => {
+            set({ token: null, user: null, isLocked: false });
+          }, 0);
+          return false;
+        }
+        return true;
+      },
       login: (token, user) => set({ token, user, isLocked: false }),
       logout: () => set({ token: null, user: null, isLocked: false }),
       lock: () => set({ isLocked: true }),

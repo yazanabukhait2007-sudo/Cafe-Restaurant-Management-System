@@ -64,11 +64,12 @@ export const createProductVariantSchema = z.object({
 });
 
 export const createProductSchema = z.object({
-  categoryId: idSchema,
+  categoryId: idSchema.optional().nullable(),
+  categoryName: z.string().optional().nullable(),
   name: z.string().min(1, "Product name is required").max(100, "Product name is too long"),
   description: z.string().max(500, "Description is too long").nullable().optional(),
   price: z.number().nonnegative("Price must be a positive number"),
-  image: z.string().url("Invalid image URL").nullable().optional().or(z.string().max(255).optional()),
+  image: z.string().max(20000).nullable().optional().or(z.string().url().optional()), // Support base64 or text images from client
   variants: z.array(createProductVariantSchema).optional(),
 });
 

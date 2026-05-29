@@ -7,6 +7,9 @@ import { usePosStore } from '@/store/pos';
 import { useAuthStore } from '@/store/auth';
 import { useSettingsStore } from '@/store/settings';
 import { useTranslation } from 'react-i18next';
+import apiClient from '@/api/client';
+
+import ProductSelectionModal from '@/components/ProductSelectionModal';
 
 export default function POSPage() {
   const navigate = useNavigate();
@@ -17,6 +20,7 @@ export default function POSPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showPOSCheckoutModal, setShowPOSCheckoutModal] = useState(false);
   const [selectedMethod, setSelectedMethod] = useState<'cash' | 'card' | null>(null);
+  const [selectedProductForCustomization, setSelectedProductForCustomization] = useState<any | null>(null);
 
   const { t } = useTranslation();
 
@@ -24,8 +28,8 @@ export default function POSPage() {
   const rawCategories = usePosStore(state => state.categories);
   const categories = useMemo(() => ['All', ...rawCategories.map(c => c.name)], [rawCategories]);
   
-  // Virtual Water Product ID
-  const WATER_PRODUCT_ID = 9999;
+  // Virtual Water Product ID - switching to string to match product.id
+  const WATER_PRODUCT_ID = '9999';
 
   const addTicket = usePosStore(state => state.addTicket);
   const addToExistingTicketByTable = usePosStore(state => state.addToExistingTicketByTable);
@@ -34,7 +38,6 @@ export default function POSPage() {
   const addHistoryEntry = usePosStore(state => state.addHistoryEntry);
   const setBillPaid = usePosStore(state => state.setBillPaid);
   const tables = usePosStore(state => state.tables);
-  const tickets = usePosStore(state => state.tickets);
   const { user } = useAuthStore();
   const { waterPricePerGuest, taxRate, cafeName } = useSettingsStore();
 
@@ -63,7 +66,13 @@ export default function POSPage() {
   const allOrderItems = useMemo(() => {
     const combined = [...existingOrderItems];
     for (const currItem of currentOrder) {
-      const idx = combined.findIndex(i => i.productId === currItem.productId && i.notes === currItem.notes);
+      // Comparison logic needs to account for variants and modifiers now
+      const idx = combined.findIndex(i => 
+        i.productId === currItem.productId && 
+        i.variantId === currItem.variantId &&
+        JSON.stringify(i.modifiers?.map((m: any) => m.id).sort()) === JSON.stringify(currItem.modifiers?.map((m: any) => m.id).sort()) &&
+        i.notes === currItem.notes
+      );
       if (idx >= 0) {
          combined[idx] = { ...combined[idx], quantity: combined[idx].quantity + currItem.quantity };
       } else {
@@ -73,17 +82,54 @@ export default function POSPage() {
     return combined;
   }, [existingOrderItems, currentOrder]);
 
-  const existingOrderTotal = tableEntity?.activeOrderTotal || 0; // Keeping for reference if needed
-
-  const addToCart = (product: any) => {
+  const addToCartInternal = (product: any, selection: any) => {
     setCurrentOrder(curr => {
-      const existing = curr.find(item => item.productId === product.id);
-      if (existing) {
-        return curr.map(item => item.productId === product.id ? { ...item, quantity: item.quantity + 1 } : item);
+      const basePrice = selection.variant ? selection.variant.price : product.price;
+      const modPrice = selection.modifiers?.reduce((sum: number, m: any) => sum + m.price, 0) || 0;
+      const finalPrice = basePrice + modPrice;
+
+      const newItem = {
+        id: `new_${Date.now()}_${product.id}`,
+        productId: product.id,
+        name: selection.variant ? `${product.name} (${selection.variant.name})` : product.name,
+        price: finalPrice,
+        basePrice: basePrice,
+        quantity: selection.quantity,
+        variantId: selection.variant?.id,
+        variantName: selection.variant?.name,
+        modifiers: selection.modifiers,
+        notes: selection.notes
+      };
+
+      // Check if identical item already exists in current order to merge
+      const existingIdx = curr.findIndex(i => 
+        i.productId === newItem.productId && 
+        i.variantId === newItem.variantId &&
+        JSON.stringify(i.modifiers?.map((m: any) => m.id).sort()) === JSON.stringify(newItem.modifiers?.map((m: any) => m.id).sort()) &&
+        i.notes === newItem.notes
+      );
+
+      if (existingIdx >= 0) {
+        const updated = [...curr];
+        updated[existingIdx] = { ...updated[existingIdx], quantity: updated[existingIdx].quantity + newItem.quantity };
+        return updated;
       }
-      return [...curr, { id: `new_${Date.now()}_${product.id}`, productId: product.id, name: product.name, price: product.price, quantity: 1 }];
+
+      return [...curr, newItem];
     });
     toast.success(t('Product added successfully'));
+    setSelectedProductForCustomization(null);
+  };
+
+  const handleProductClick = (product: any) => {
+    const hasVariants = product.variants && product.variants.length > 0;
+    const hasModifiers = product.modifierGroups && product.modifierGroups.length > 0;
+
+    if (hasVariants || hasModifiers) {
+      setSelectedProductForCustomization(product);
+    } else {
+      addToCartInternal(product, { quantity: 1, modifiers: [] });
+    }
   };
 
   const updateQuantity = (id: string, delta: number) => {
@@ -109,12 +155,32 @@ export default function POSPage() {
     setShowPOSCheckoutModal(true);
   };
 
-  const handleSendToKitchen = (skipRedirect = false) => {
+  const handleSendToKitchen = async (skipRedirect = false): Promise<boolean> => {
     if (currentOrder.length === 0) {
-       return;
+       return true;
     }
     
     const items = currentOrder.map(item => ({ ...item, completed: false }));
+    
+    // Prepare items for stock checking format
+    const checkItems = items.map(it => ({
+      productId: String(it.productId),
+      productVariantId: it.variantId || null,
+      modifierIds: it.modifiers?.map((m: any) => String(m.id)) || [],
+      quantity: it.quantity,
+      name: it.name,
+    }));
+
+    try {
+      const res = await apiClient.post('/inventory/check-stock', { items: checkItems });
+      if (!res.data.success) {
+        toast.error(res.data.message || t('No sufficient ingredients on-hand! / لا يوجد مخزون كافي للطلب!'));
+        return false;
+      }
+    } catch (err: any) {
+      console.error("Stock check error:", err);
+      // Fallback: don't block POS if API server is temporarily offline
+    }
     
     if (tableData?.existingOrder && tableData.tableName) {
       // Add to existing order
@@ -146,14 +212,16 @@ export default function POSPage() {
     if (!skipRedirect && tableData?.tableName) {
       navigate('/pos/tables');
     }
+    return true;
   };
 
-  const handleFinalPOSCheckout = () => {
+  const handleFinalPOSCheckout = async () => {
     if (!selectedMethod) return;
 
     // Send any unsent current order items to the kitchen first
     if (currentOrder.length > 0) {
-      handleSendToKitchen(true);
+      const success = await handleSendToKitchen(true);
+      if (!success) return; // Prevent payment if stock is missing
     }
 
     // Now, let's process payment
@@ -164,7 +232,25 @@ export default function POSPage() {
       setShowPOSCheckoutModal(false);
       navigate('/pos/tables');
     } else {
-      // Takeaway order. Record directly to history
+      // Takeaway order. Check if ingredients are available for any existing order items too
+      const checkItems = allOrderItems.map(it => ({
+        productId: String(it.productId),
+        productVariantId: it.variantId || null,
+        modifierIds: it.modifiers?.map((m: any) => String(m.id)) || [],
+        quantity: it.quantity,
+        name: it.name,
+      }));
+
+      try {
+        const res = await apiClient.post('/inventory/check-stock', { items: checkItems });
+        if (!res.data.success) {
+          toast.error(res.data.message || t('No sufficient ingredients on-hand! / لا يوجد مخزون كافي للطلب!'));
+          return;
+        }
+      } catch (err) {
+        console.error("Stock check error on takeaway payment:", err);
+      }
+
       const durationStr = '5m';
       const finalSubtotal = subtotal;
       const finalTax = subtotal * (taxRate / 100);
@@ -299,13 +385,13 @@ export default function POSPage() {
               key={cat}
               onClick={() => setActiveCategory(cat)}
               className={cn(
-                "px-6 py-2 rounded-2xl text-xs font-bold transition-all shrink-0 shadow-sm border",
+                "px-7 py-2.5 rounded-2xl text-[12px] font-black transition-all shrink-0 shadow-sm border uppercase tracking-wider",
                 activeCategory === cat 
-                  ? "bg-primary text-primary-foreground border-primary shadow-md"
+                  ? "bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/10"
                   : "bg-white text-stone-400 border-stone-200/60 hover:text-stone-600 hover:bg-stone-50"
               )}
             >
-              {cat === 'All' ? t('All Items') : cat}
+              {t(cat)}
             </button>
           ))}
         </div>
@@ -315,7 +401,7 @@ export default function POSPage() {
             {filteredProducts.map(product => (
               <button 
                 key={product.id}
-                onClick={() => addToCart(product)}
+                onClick={() => handleProductClick(product)}
                 className="aspect-[5/6] bg-white border border-stone-200 rounded-3xl flex flex-col hover:border-primary hover:shadow-xl hover:shadow-primary/5 transition-all relative group active:scale-95 overflow-hidden shadow-sm"
               >
                 {/* Image Area */}
@@ -347,6 +433,15 @@ export default function POSPage() {
           </div>
         </div>
       </div>
+
+      {/* Product Customization Modal */}
+      {selectedProductForCustomization && (
+        <ProductSelectionModal
+          product={selectedProductForCustomization}
+          onClose={() => setSelectedProductForCustomization(null)}
+          onConfirm={(selection) => addToCartInternal(selectedProductForCustomization, selection)}
+        />
+      )}
 
       {/* Overlay for mobile cart */}
       {isCartOpen && (

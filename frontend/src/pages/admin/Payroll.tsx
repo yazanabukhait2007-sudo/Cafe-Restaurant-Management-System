@@ -8,10 +8,14 @@ import { withOklchPolyfill } from "@/utils/utils";
 import { useAuthStore } from "@/store/auth";
 import { useWorkersStore } from "@/store/workers";
 import { usePayrollStore } from "@/store/payroll";
+import { useSettingsStore } from "@/store/settings";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
+import i18n from "@/utils/i18n";
 
 // Inline helper components for clean implementation
 function MonthPicker({ value, onChange }: { value: string; onChange: (v: string) => void; align?: string }) {
+  const { t } = useTranslation();
   const date = value ? new Date(value + "-01") : new Date();
   
   const handlePrev = () => {
@@ -34,7 +38,7 @@ function MonthPicker({ value, onChange }: { value: string; onChange: (v: string)
         <ChevronRight className="w-5 h-5" />
       </button>
       <span className="w-32 text-center font-bold text-sm text-foreground">
-        {format(date, 'MMMM yyyy', { locale: ar })}
+        {format(date, 'MMMM yyyy', { locale: i18n.language === 'ar' ? ar : undefined })}
       </span>
       <button
         type="button"
@@ -67,10 +71,11 @@ function ConfirmModal({ isOpen, title, message, confirmText, onConfirm, onCancel
   onConfirm: () => void;
   onCancel: () => void;
 }) {
+  const { t } = useTranslation();
   if (!isOpen) return null;
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-background border border-border rounded-3xl w-full max-w-md shadow-2xl p-6" dir="rtl">
+      <div className="bg-background border border-border rounded-3xl w-full max-w-md shadow-2xl p-6">
         <h3 className="text-xl font-bold text-foreground mb-2">{title}</h3>
         <p className="text-sm text-muted-foreground mb-6 leading-relaxed">{message}</p>
         <div className="flex gap-3 justify-end">
@@ -78,7 +83,7 @@ function ConfirmModal({ isOpen, title, message, confirmText, onConfirm, onCancel
             onClick={onCancel}
             className="px-4 py-2.5 bg-background border border-border text-foreground rounded-xl text-sm font-bold hover:bg-muted cursor-pointer"
           >
-            إلغاء
+            {t('Cancel')}
           </button>
           <button
             onClick={() => {
@@ -105,6 +110,8 @@ function Logo() {
 }
 
 export default function AccountStatement() {
+  const { t } = useTranslation();
+  const { currency } = useSettingsStore();
   const { user } = useAuthStore();
   const { workers } = useWorkersStore();
   const { transactions, addTransaction, deleteTransaction } = usePayrollStore();
@@ -138,7 +145,7 @@ export default function AccountStatement() {
         type: newTransaction.type as any,
         amount: parseFloat(newTransaction.amount),
         date: newTransaction.date,
-        description: newTransaction.description || (newTransaction.type === 'payment' ? 'دفعة نقدية / سلفة' : newTransaction.type === 'deduction' ? 'خصم مالي' : 'مكافأة')
+        description: newTransaction.description || (newTransaction.type === 'payment' ? t('Cash Payment / Advance') : newTransaction.type === 'deduction' ? t('Financial Deduction') : t('Bonus / Reward'))
       });
       
       setIsAddModalOpen(false);
@@ -148,10 +155,10 @@ export default function AccountStatement() {
         date: format(new Date(), 'yyyy-MM-dd'),
         description: ''
       });
-      toast.success("تم إضافة الحركة بنجاح");
+      toast.success(t('Transaction added successfully'));
     } catch (error) {
       console.error("Error adding transaction:", error);
-      toast.error("حدث خطأ أثناء إضافة الحركة");
+      toast.error(t('Error adding transaction'));
     }
   };
 
@@ -164,10 +171,10 @@ export default function AccountStatement() {
 
     try {
       deleteTransaction(deleteModal.id);
-      toast.success("تم حذف الحركة بنجاح");
+      toast.success(t('Transaction deleted successfully'));
     } catch (error) {
       console.error("Error deleting transaction:", error);
-      toast.error("حدث خطأ أثناء حذف الحركة");
+      toast.error(t('Error deleting transaction'));
     }
   };
 
@@ -212,11 +219,11 @@ export default function AccountStatement() {
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
       pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
-      pdf.save(`كشف_حساب_${selectedWorker?.name}_${selectedMonth}.pdf`);
-      toast.success("تم تصدير ملف PDF بنجاح");
+      pdf.save(`statement_${selectedWorker?.name}_${selectedMonth}.pdf`);
+      toast.success(t('Export PDF successful'));
     } catch (error) {
       console.error("PDF Export Error:", error);
-      toast.error("حدث خطأ أثناء تصدير الملف");
+      toast.error(t('Error exporting PDF'));
     }
   };
 
@@ -226,10 +233,10 @@ export default function AccountStatement() {
 
   const getTypeLabel = (type: string) => {
     switch (type) {
-      case 'salary': return 'راتب';
-      case 'bonus': return 'علاوة';
-      case 'deduction': return 'خصم';
-      case 'payment': return 'دفعة';
+      case 'salary': return t('Salary');
+      case 'bonus': return t('Bonus');
+      case 'deduction': return t('Deduction');
+      case 'payment': return t('Payment');
       default: return type;
     }
   };
@@ -249,11 +256,11 @@ export default function AccountStatement() {
   const canExportPdf = user?.role === 'admin' || user?.role === 'manager';
 
   return (
-    <div className="space-y-6" dir="rtl">
+    <div className="space-y-6" dir={i18n.dir()}>
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">كشف الحساب</h1>
-          <p className="text-gray-500 mt-1">إدارة رواتب وحسابات العمال</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('Account Statement')}</h1>
+          <p className="text-gray-500 mt-1">{t('Manage worker salaries and accounts')}</p>
         </div>
         <div className="w-full sm:w-auto">
           <MonthPicker value={selectedMonth} onChange={setSelectedMonth} align="left" />
@@ -263,24 +270,24 @@ export default function AccountStatement() {
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="p-4 border-b border-gray-100">
           <div className="relative max-w-md">
-            <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 h-5 w-5" />
+            <Search className="absolute ltr:left-3 rtl:right-3 top-1/2 -translate-y-1/2 text-gray-400 h-5 w-5" />
             <input
               type="text"
-              placeholder="ابحث عن عامل..."
+              placeholder={t('Search for worker')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none text-right"
+              className="w-full ltr:pl-10 rtl:pr-10 ltr:pr-4 rtl:pl-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none"
             />
           </div>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-right">
+          <table className="w-full ltr:text-left rtl:text-right">
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
-                <th className="px-6 py-4 text-sm font-semibold text-gray-600">اسم العامل</th>
-                <th className="px-6 py-4 text-sm font-semibold text-gray-600">الرصيد الصافي</th>
-                <th className="px-6 py-4 text-sm font-semibold text-gray-600 text-center">الإجراءات</th>
+                <th className="px-6 py-4 text-sm font-semibold text-gray-600">{t('Worker Name')}</th>
+                <th className="px-6 py-4 text-sm font-semibold text-gray-600">{t('Net Balance')}</th>
+                <th className="px-6 py-4 text-sm font-semibold text-gray-600 text-center">{t('Actions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -293,7 +300,7 @@ export default function AccountStatement() {
                     </td>
                     <td className="px-6 py-4">
                       <div className={`font-bold ${netBalance >= 0 ? 'text-green-600 ' : 'text-red-600 '}`} dir="ltr">
-                        {netBalance.toFixed(2)} د.أ
+                        {netBalance.toFixed(2)} {currency || 'JOD'}
                       </div>
                     </td>
                     <td className="px-6 py-4">
@@ -305,7 +312,7 @@ export default function AccountStatement() {
                               setIsAddModalOpen(true);
                             }}
                             className="p-2 text-[#006838] hover:bg-[#006838]/10 rounded-lg transition-colors cursor-pointer"
-                            title="إضافة حركة"
+                            title={t('Add Transaction')}
                           >
                             <Plus className="w-5 h-5" />
                           </button>
@@ -318,7 +325,7 @@ export default function AccountStatement() {
                           className="flex items-center gap-2 px-3 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors text-sm font-medium cursor-pointer"
                         >
                           <FileText className="w-4 h-4" />
-                          تفاصيل
+                          {t('Details')}
                         </button>
                         {canExportPdf && (
                           <button
@@ -330,7 +337,7 @@ export default function AccountStatement() {
                               }, 100);
                             }}
                             className="p-2 text-[#006838] hover:bg-[#006838]/10 rounded-lg transition-colors cursor-pointer"
-                            title="تحميل PDF"
+                            title={t('Export PDF')}
                           >
                             <Download className="w-5 h-5" />
                           </button>
@@ -343,7 +350,7 @@ export default function AccountStatement() {
               {filteredWorkers.length === 0 && (
                 <tr>
                   <td colSpan={3} className="px-6 py-8 text-center text-gray-500">
-                    لا يوجد عمال مطابقين للبحث
+                    {t('No matching employees found')}
                   </td>
                 </tr>
               )}
@@ -361,9 +368,10 @@ export default function AccountStatement() {
           <div 
             className="bg-white rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col"
             onClick={(e) => e.stopPropagation()}
+            dir={i18n.dir()}
           >
             <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-orange-50/10">
-              <h2 className="text-xl font-bold text-gray-900">كشف حساب: {selectedWorker.name}</h2>
+              <h2 className="text-xl font-bold text-gray-900">{t('Account Statement')}: {selectedWorker.name}</h2>
               <div className="flex gap-2">
                 {canExportPdf && (
                   <button
@@ -371,7 +379,7 @@ export default function AccountStatement() {
                     className="flex items-center gap-2 px-4 py-2 bg-[#006838] text-white rounded-lg hover:bg-[#006838]/90 transition-colors cursor-pointer font-bold"
                   >
                     <Download className="w-4 h-4" />
-                    تحميل PDF
+                    {t('Export PDF')}
                   </button>
                 )}
                 <button
@@ -386,12 +394,12 @@ export default function AccountStatement() {
             <div className="p-6 overflow-y-auto flex-1">
               {/* Isolated hidden PDF rendering context */}
               <div style={{ position: "absolute", left: "-9999px", top: "-9999px", width: "210mm", minHeight: "297mm" }}>
-                <div ref={statementRef} className="bg-[#ffffff] p-8 w-full print-area" dir="rtl">
+                <div ref={statementRef} className="bg-[#ffffff] p-8 w-full print-area" dir={i18n.dir()}>
                   <div className="flex justify-between items-center mb-8 border-b-2 border-[#006838] pb-4">
                     <div>
-                      <h1 className="text-2xl font-bold text-[#006838] mb-2">كشف حساب عامل</h1>
+                      <h1 className="text-2xl font-bold text-[#006838] mb-2">{t('Detailed Worker Account Statement')}</h1>
                       <p className="text-[#4b5563]">
-                        {format(new Date(`${selectedMonth}-01`), 'MMMM yyyy', { locale: ar })}
+                        {format(new Date(`${selectedMonth}-01`), 'MMMM yyyy', { locale: i18n.language === 'ar' ? ar : undefined })}
                       </p>
                     </div>
                     <div className="scale-100 origin-left">
@@ -401,24 +409,24 @@ export default function AccountStatement() {
 
                   <div className="grid grid-cols-2 gap-4 mb-8">
                     <div className="bg-[#f9fafb] p-4 rounded-lg border border-[#f3f4f6]">
-                      <div className="text-sm text-[#6b7280] mb-1">اسم العامل</div>
+                      <div className="text-sm text-[#6b7280] mb-1">{t('Worker Name')}</div>
                       <div className="font-bold text-[#111827]">{selectedWorker.name}</div>
                     </div>
                     <div className="bg-[#f9fafb] p-4 rounded-lg border border-[#f3f4f6]">
-                      <div className="text-sm text-[#6b7280] mb-1">الرصيد الصافي</div>
+                      <div className="text-sm text-[#6b7280] mb-1">{t('Net Balance')}</div>
                       <div className={`font-bold ${calculateNetBalance(selectedWorker.id) >= 0 ? 'text-[#16a34a]' : 'text-[#dc2626]'}`} dir="ltr">
-                        {calculateNetBalance(selectedWorker.id).toFixed(2)} د.أ
+                        {calculateNetBalance(selectedWorker.id).toFixed(2)} {currency || 'JOD'}
                       </div>
                     </div>
                   </div>
 
-                  <table className="w-full text-right border-collapse">
+                  <table className="w-full ltr:text-left rtl:text-right border-collapse">
                     <thead>
                       <tr className="bg-[#f3f4f6]">
-                        <th className="border border-[#e5e7eb] px-4 py-2 font-semibold text-[#374151]">التاريخ</th>
-                        <th className="border border-[#e5e7eb] px-4 py-2 font-semibold text-[#374151]">النوع</th>
-                        <th className="border border-[#e5e7eb] px-4 py-2 font-semibold text-[#374151]">البيان</th>
-                        <th className="border border-[#e5e7eb] px-4 py-2 font-semibold text-[#374151]">المبلغ</th>
+                        <th className="border border-[#e5e7eb] px-4 py-2 font-semibold text-[#374151]">{t('Date')}</th>
+                        <th className="border border-[#e5e7eb] px-4 py-2 font-semibold text-[#374151]">{t('Type')}</th>
+                        <th className="border border-[#e5e7eb] px-4 py-2 font-semibold text-[#374151]">{t('Description')}</th>
+                        <th className="border border-[#e5e7eb] px-4 py-2 font-semibold text-[#374151]">{t('Amount')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -426,10 +434,10 @@ export default function AccountStatement() {
                         <td className="border border-[#e5e7eb] px-4 py-2 text-[#111827]">{format(new Date(`${selectedMonth}-01`), 'yyyy-MM-01')}</td>
                         <td className="border border-[#e5e7eb] px-4 py-2">
                           <span className="px-2 py-1 rounded-full text-xs font-semibold bg-[#dbeafe] text-[#1e40af]">
-                            راتب
+                            {t('Salary')}
                           </span>
                         </td>
-                        <td className="border border-[#e5e7eb] px-4 py-2 text-[#111827]">الراتب الأساسي لشهر {format(new Date(`${selectedMonth}-01`), 'MM/yyyy')}</td>
+                        <td className="border border-[#e5e7eb] px-4 py-2 text-[#111827]">{t('Basic Salary for month')} {format(new Date(`${selectedMonth}-01`), 'MM/yyyy')}</td>
                         <td className="border border-[#e5e7eb] px-4 py-2 font-medium text-[#111827]" dir="ltr">
                           +{selectedWorker.salary.toFixed(2)}
                         </td>
@@ -438,7 +446,7 @@ export default function AccountStatement() {
                         <tr key={t.id}>
                           <td className="border border-[#e5e7eb] px-4 py-2 text-[#111827]">{t.date}</td>
                           <td className="border border-[#e5e7eb] px-4 py-2">
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${ (t.type as string) === 'salary' ? 'bg-[#dbeafe] text-[#1e40af]' : t.type === 'bonus' ? 'bg-[#dcfce7] text-[#166534]' : t.type === 'deduction' ? 'bg-[#fee2e2] text-[#991b1b]' : 'bg-[#ffedd5] text-[#9a3412]' }`}>
+                             <span className={`px-2 py-1 rounded-full text-xs font-medium ${ (t.type as string) === 'salary' ? 'bg-[#dbeafe] text-[#1e40af]' : t.type === 'bonus' ? 'bg-[#dcfce7] text-[#166534]' : t.type === 'deduction' ? 'bg-[#fee2e2] text-[#991b1b]' : 'bg-[#ffedd5] text-[#9a3412]' }`}>
                               {getTypeLabel(t.type)}
                             </span>
                           </td>
@@ -451,45 +459,45 @@ export default function AccountStatement() {
                     </tbody>
                     <tfoot>
                       <tr className="bg-[#f9fafb] font-bold">
-                        <td colSpan={3} className="border border-[#e5e7eb] px-4 py-3 text-left text-[#111827]">الرصيد الصافي:</td>
+                        <td colSpan={3} className="border border-[#e5e7eb] px-4 py-3 text-left text-[#111827]">{t('Total Net Balance:')}</td>
                         <td className="border border-[#e5e7eb] px-4 py-3 text-[#111827]" dir="ltr">
-                          {calculateNetBalance(selectedWorker.id).toFixed(2)} د.أ
+                          {calculateNetBalance(selectedWorker.id).toFixed(2)} {currency || 'JOD'}
                         </td>
                       </tr>
                     </tfoot>
                   </table>
                   
                   <div className="mt-12 pt-4 border-t border-[#e5e7eb] text-center text-[#6b7280] text-sm font-bold">
-                    تم إصدار هذا الكشف من شركة لافانت للمنتجات الغذائية
+                    {t('System generated report')}
                   </div>
                 </div>
               </div>
               
               {/* Visible UI for Modal */}
-              <div className="bg-white p-0 sm:p-4 rounded-xl" dir="rtl">
+              <div className="bg-white p-0 sm:p-4 rounded-xl">
                 <div className="grid grid-cols-2 gap-4 mb-8">
                   <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
-                    <div className="text-sm text-gray-500 mb-1">اسم العامل</div>
+                    <div className="text-sm text-gray-500 mb-1">{t('Worker Name')}</div>
                     <div className="font-bold text-gray-900">{selectedWorker.name}</div>
                   </div>
                   <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
-                    <div className="text-sm text-gray-500 mb-1">الرصيد الصافي</div>
+                    <div className="text-sm text-gray-500 mb-1">{t('Net Balance')}</div>
                     <div className={`font-bold ${calculateNetBalance(selectedWorker.id) >= 0 ? 'text-green-600 ' : 'text-red-600 '}`} dir="ltr">
-                      {calculateNetBalance(selectedWorker.id).toFixed(2)} د.أ
+                      {calculateNetBalance(selectedWorker.id).toFixed(2)} {currency || 'JOD'}
                     </div>
                   </div>
                 </div>
 
                 <div className="overflow-x-auto">
-                  <table className="w-full text-right border-collapse">
+                  <table className="w-full ltr:text-left rtl:text-right border-collapse">
                     <thead>
                       <tr className="bg-gray-50">
-                        <th className="border border-gray-100 px-4 py-2 font-semibold text-gray-600">التاريخ</th>
-                        <th className="border border-gray-100 px-4 py-2 font-semibold text-gray-600">النوع</th>
-                        <th className="border border-gray-100 px-4 py-2 font-semibold text-gray-600">البيان</th>
-                        <th className="border border-gray-100 px-4 py-2 font-semibold text-gray-600">المبلغ</th>
+                        <th className="border border-gray-100 px-4 py-2 font-semibold text-gray-600">{t('Date')}</th>
+                        <th className="border border-gray-100 px-4 py-2 font-semibold text-gray-600">{t('Type')}</th>
+                        <th className="border border-gray-100 px-4 py-2 font-semibold text-gray-600">{t('Description')}</th>
+                        <th className="border border-gray-100 px-4 py-2 font-semibold text-gray-600">{t('Amount')}</th>
                         {canDeleteTransaction && (
-                          <th className="border border-gray-100 px-4 py-2 font-semibold text-gray-600 text-center">حذف</th>
+                          <th className="border border-gray-100 px-4 py-2 font-semibold text-gray-600 text-center">{t('Delete')}</th>
                         )}
                       </tr>
                     </thead>
@@ -498,12 +506,12 @@ export default function AccountStatement() {
                         <td className="border border-gray-100 px-4 py-2 text-gray-900">{format(new Date(`${selectedMonth}-01`), 'yyyy-MM-01')}</td>
                         <td className="border border-gray-100 px-4 py-2">
                           <span className="px-2 py-1 rounded-full text-xs font-semibold bg-[#dbeafe] text-[#1e40af]">
-                            راتب
+                            {t('Salary')}
                           </span>
                         </td>
-                        <td className="border border-gray-100 px-4 py-2 text-gray-900">الراتب الأساسي لشهر {format(new Date(`${selectedMonth}-01`), 'MM/yyyy')}</td>
-                        <td className="border border-gray-100 px-4 py-2 font-medium text-gray-900 text-left" dir="ltr">
-                          +{selectedWorker.salary.toFixed(2)} د.أ
+                        <td className="border border-gray-100 px-4 py-2 text-gray-900">{t('Basic Salary for month')} {format(new Date(`${selectedMonth}-01`), 'MM/yyyy')}</td>
+                        <td className="border border-gray-100 px-4 py-2 font-medium text-gray-900 ltr:text-right rtl:text-left" dir="ltr">
+                          +{selectedWorker.salary.toFixed(2)} {currency || 'JOD'}
                         </td>
                         {canDeleteTransaction && (
                           <td className="border border-gray-100 px-4 py-2"></td>
@@ -518,8 +526,8 @@ export default function AccountStatement() {
                             </span>
                           </td>
                           <td className="border border-gray-100 px-4 py-2 text-gray-900">{t.description || '-'}</td>
-                          <td className="border border-gray-100 px-4 py-2 font-medium text-gray-900" dir="ltr">
-                            {(t.type === 'deduction' || t.type === 'payment') ? '-' : '+'}{t.amount.toFixed(2)} د.أ
+                          <td className="border border-gray-100 px-4 py-2 font-medium text-gray-900 ltr:text-right rtl:text-left" dir="ltr">
+                            {(t.type === 'deduction' || t.type === 'payment') ? '-' : '+'}{t.amount.toFixed(2)} {currency || 'JOD'}
                           </td>
                           {canDeleteTransaction && (
                             <td className="border border-gray-100 px-4 py-2 text-center">
@@ -536,9 +544,9 @@ export default function AccountStatement() {
                     </tbody>
                     <tfoot>
                       <tr className="bg-gray-50 font-bold">
-                        <td colSpan={3} className="border border-gray-100 px-4 py-3 text-left text-gray-900">الرصيد الصافي:</td>
-                        <td className="border border-gray-100 px-4 py-3 text-gray-900" dir="ltr">
-                          {calculateNetBalance(selectedWorker.id).toFixed(2)} د.أ
+                        <td colSpan={3} className="border border-gray-100 px-4 py-3 text-left text-gray-900">{t('Total Net Balance:')}</td>
+                        <td className="border border-gray-100 px-4 py-3 text-gray-900 ltr:text-right rtl:text-left" dir="ltr">
+                          {calculateNetBalance(selectedWorker.id).toFixed(2)} {currency || 'JOD'}
                         </td>
                         {canDeleteTransaction && (
                           <td className="border border-gray-100 px-4 py-3"></td>
@@ -562,9 +570,10 @@ export default function AccountStatement() {
           <div 
             className="bg-white rounded-2xl shadow-xl w-full max-w-md"
             onClick={(e) => e.stopPropagation()}
+            dir={i18n.dir()}
           >
             <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-orange-50/10">
-              <h2 className="text-xl font-bold text-gray-900">إضافة حركة لـ {selectedWorker.name}</h2>
+              <h2 className="text-xl font-bold text-gray-900">{t('Add Transaction')}: {selectedWorker.name}</h2>
               <button
                 onClick={() => setIsAddModalOpen(false)}
                 className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
@@ -574,12 +583,12 @@ export default function AccountStatement() {
             </div>
             <form onSubmit={handleAddTransaction} className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">نوع الحركة</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{t('Transaction type')}</label>
                 <div className="grid grid-cols-3 gap-2">
                   {[
-                    { id: 'bonus', label: 'علاوة', activeClass: 'bg-[#dcfce7] text-[#166534] border-[#166534]' },
-                    { id: 'deduction', label: 'خصم', activeClass: 'bg-[#fee2e2] text-[#991b1b] border-[#991b1b]' },
-                    { id: 'payment', label: 'دفعة', activeClass: 'bg-[#ffedd5] text-[#9a3412] border-[#9a3412]' }
+                    { id: 'bonus', label: t('Bonus'), activeClass: 'bg-[#dcfce7] text-[#166534] border-[#166534]' },
+                    { id: 'deduction', label: t('Deduction'), activeClass: 'bg-[#fee2e2] text-[#991b1b] border-[#991b1b]' },
+                    { id: 'payment', label: t('Payment'), activeClass: 'bg-[#ffedd5] text-[#9a3412] border-[#9a3412]' }
                   ].map(type => (
                     <button
                       key={type.id}
@@ -593,7 +602,7 @@ export default function AccountStatement() {
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">المبلغ</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('Amount')}</label>
                 <input
                   type="number"
                   step="0.01"
@@ -605,14 +614,14 @@ export default function AccountStatement() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">التاريخ</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('Date')}</label>
                 <DatePicker
                   value={newTransaction.date}
                   onChange={(date) => setNewTransaction({...newTransaction, date})}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">البيان (اختياري)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('Description')} ({t('Optional')})</label>
                 <input
                   type="text"
                   value={newTransaction.description}
@@ -625,14 +634,14 @@ export default function AccountStatement() {
                   type="submit"
                   className="flex-1 bg-[#006838] text-white px-4 py-2.5 rounded-xl hover:bg-[#006838]/90 transition-all font-bold cursor-pointer"
                 >
-                  حفظ
+                  {t('Save')}
                 </button>
                 <button
                   type="button"
                   onClick={() => setIsAddModalOpen(false)}
                   className="flex-1 bg-gray-100 text-gray-700 px-4 py-2.5 rounded-xl hover:bg-gray-200 transition-all font-bold cursor-pointer"
                 >
-                  إلغاء
+                  {t('Cancel')}
                 </button>
               </div>
             </form>
@@ -642,9 +651,9 @@ export default function AccountStatement() {
 
       <ConfirmModal
         isOpen={deleteModal.isOpen}
-        title="حذف حركة"
-        message="هل أنت متأكد من حذف هذه الحركة؟ لا يمكن التراجع عن هذا الإجراء."
-        confirmText="نعم، احذف الحركة"
+        title={t('Delete Transaction')}
+        message={t('Are you sure you want to delete this transaction?')}
+        confirmText={t('Yes, delete transaction')}
         onConfirm={executeDelete}
         onCancel={() => setDeleteModal({ isOpen: false, id: null })}
       />
