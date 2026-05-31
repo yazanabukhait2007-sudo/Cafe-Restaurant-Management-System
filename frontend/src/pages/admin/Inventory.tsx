@@ -108,10 +108,26 @@ export default function InventoryPage() {
   });
 
   const [stockForm, setStockForm] = useState({
-    quantity: 0,
-    type: 'Purchase', // Purchase (Restock), Adjustment
-    note: ''
+    quantity: "" as string | number,
+    type: "Purchase", // Purchase (Restock), Adjustment
+    note: ""
   });
+  const [adjSign, setAdjSign] = useState<"+" | "-">("+");
+  const [hasActiveSession, setHasActiveSession] = useState(false);
+
+  const checkActiveSession = async () => {
+    try {
+      const res = await apiClient.get('/inventory-counts');
+      const active = res.data.some((s: any) => s.status !== 'Completed' && s.status !== 'Cancelled');
+      setHasActiveSession(active);
+    } catch (err) {
+      console.error("Error checking active inventory session:", err);
+    }
+  };
+
+  useEffect(() => {
+    checkActiveSession();
+  }, [isEditStockOpen]);
 
   const [recipeForm, setRecipeForm] = useState<{ ingredientId: string; quantity: string }[]>([]);
   const [openDropdownIndex, setOpenDropdownIndex] = useState<number | null>(null);
@@ -167,9 +183,10 @@ export default function InventoryPage() {
         // Edit flow
         await apiClient.put(`/inventory/ingredients/${selectedIngredient.id}`, {
           ...ingredientForm,
-          currentStock: undefined // Stock adjustments are handled separately under stockForm
+          currentStock: ingredientForm.currentStock,
+          adjustmentReason: isAr ? 'تعديل مباشر للكمية الحالية من لوحة التحكم' : 'Direct manual stock edit from dashboard'
         });
-        toast.success(isAr ? 'تم تعديل المكون بنجاح' : 'Successfully updated ingredient');
+        toast.success(isAr ? 'تم تعديل المكون بنجاح وتحديث الرصيد الفعلي' : 'Successfully updated ingredient and stock balance');
       } else {
         // Create flow
         await apiClient.post('/inventory/ingredients', ingredientForm);
@@ -191,12 +208,31 @@ export default function InventoryPage() {
 
     try {
       const q = parseFloat(String(stockForm.quantity));
-      if (isNaN(q) || q === 0) {
-        toast.warning(isAr ? 'يرجى إدخال كمية صحيحة' : 'Please specify a non-zero quantity');
+      if (isNaN(q)) {
+        toast.warning(isAr ? 'يرجى إدخال كمية صحيحة' : 'Please specify a valid quantity');
         return;
       }
 
-      const finalQty = stockForm.type === 'Wastage' ? -Math.abs(q) : q; // Deduct if waste
+      const isZeroNotAllowed = (stockForm.type !== 'Adjustment') && (q === 0);
+      if (isZeroNotAllowed) {
+        toast.warning(isAr ? 'يرجى إدخال كمية أكبر من الصفر' : 'Please specify a non-zero quantity');
+        return;
+      }
+
+      if (q < 0) {
+        toast.warning(isAr ? 'لا يمكن إدخال كميات سالبة' : 'Quantity cannot be negative');
+        return;
+      }
+
+      const finalQty = stockForm.type === 'Adjustment'
+        ? (q - selectedIngredient.currentStock)
+        : (stockForm.type === 'Wastage' ? -Math.abs(q) : Math.abs(q));
+
+      if (stockForm.type === 'Adjustment' && finalQty === 0) {
+        toast.info(isAr ? 'الكمية المدخلة متطابقة تماماً مع النظام، لا رصد لفوارق جرد' : 'The entered quantity matches the system exactly. No adjustment needed.');
+        setIsEditStockOpen(false);
+        return;
+      }
 
       await apiClient.post('/inventory/adjust', {
         ingredientId: selectedIngredient.id,
@@ -205,7 +241,7 @@ export default function InventoryPage() {
         note: stockForm.note || (stockForm.type === 'Purchase' ? 'Restocking' : 'Manual Adjustment')
       });
 
-      toast.success(isAr ? 'تم تعديل كميات المخزن بنجاح' : 'Stock level updated successfully');
+      toast.success(isAr ? 'تم تعديل كميات المخزن بنجاح وتحديث الرصيد الفعلي' : 'Stock level updated successfully');
       setIsEditStockOpen(false);
       loadData();
     } catch (err: any) {
@@ -474,9 +510,9 @@ export default function InventoryPage() {
                           <div className="border-t border-border/20 pt-2 col-span-2 grid grid-cols-2">
                             <div>
                                <span className="text-xs text-muted-foreground block">{isAr ? 'تكلفة الوحدة' : 'Unit Cost'}</span>
-                              <span className="font-semibold text-foreground flex items-center text-xs">
-                                <DollarSign className="h-3 w-3 text-muted-foreground inline" />
+                              <span className="font-semibold text-foreground flex items-center text-xs gap-0.5">
                                 <span>{ing.cost.toFixed(2)}</span>
+                                <span className="text-[10px] text-muted-foreground">{isAr ? 'د.أ' : 'JOD'}</span>
                               </span>
                             </div>
                             <div>
@@ -493,7 +529,8 @@ export default function InventoryPage() {
                           <button
                             onClick={() => {
                               setSelectedIngredient(ing);
-                              setStockForm({ quantity: 0, type: 'Purchase', note: '' });
+                              setStockForm({ quantity: "", type: "Purchase", note: "" });
+                              setAdjSign("+");
                               setIsEditStockOpen(true);
                             }}
                             className="bg-amber-600/10 text-amber-700 hover:bg-amber-600 hover:text-white transition rounded-xl px-3 py-1.5 text-xs font-semibold flex-1"
@@ -562,7 +599,7 @@ export default function InventoryPage() {
                       <div className="flex items-center gap-4">
                         <div className="text-right rtl:text-left">
                           <span className="text-xs text-muted-foreground block">{isAr ? 'السعر الأساسي' : 'Base Price'}</span>
-                          <span className="font-bold text-lg text-foreground">${product.price.toFixed(2)}</span>
+                          <span className="font-bold text-lg text-foreground">{product.price.toFixed(2)} {isAr ? 'د.أ' : 'JOD'}</span>
                         </div>
                         
                         {product.variants.length === 0 && (
@@ -592,7 +629,7 @@ export default function InventoryPage() {
                                 <div className="flex justify-between items-center">
                                   <div>
                                     <span className="font-semibold text-foreground">{v.name}</span>
-                                    <span className="text-xs text-muted-foreground block">${v.price.toFixed(2)}</span>
+                                    <span className="text-xs text-muted-foreground block">{v.price.toFixed(2)} {isAr ? 'د.أ' : 'JOD'}</span>
                                   </div>
                                   <button
                                     onClick={() => handleOpenRecipeEditor(product, v)}
@@ -839,22 +876,24 @@ export default function InventoryPage() {
                 </div>
               </div>
 
-              {!selectedIngredient && (
-                <div>
-                  <label className="text-sm font-semibold text-muted-foreground block mb-1">{isAr ? 'الرصيد الابتدائي المتوفر' : 'Initial Stock'}</label>
-                  <input
-                    type="number"
-                    step="any"
-                    value={ingredientForm.currentStock}
-                    onChange={(e) => setIngredientForm({ ...ingredientForm, currentStock: parseFloat(e.target.value) || 0 })}
-                    className="w-full bg-muted/40 text-foreground ring-1 ring-border rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-amber-500/50 transition"
-                  />
-                </div>
-              )}
+              <div>
+                <label className="text-sm font-semibold text-muted-foreground block mb-1">
+                  {selectedIngredient 
+                    ? (isAr ? 'الكمية الفعلية المتوفرة بالمستودع حالياً' : 'Actual current stock on hand') 
+                    : (isAr ? 'الرصيد الابتدائي المتوفر' : 'Initial Stock')}
+                </label>
+                <input
+                  type="number"
+                  step="any"
+                  value={ingredientForm.currentStock}
+                  onChange={(e) => setIngredientForm({ ...ingredientForm, currentStock: parseFloat(e.target.value) || 0 })}
+                  className="w-full bg-muted/40 text-foreground ring-1 ring-border rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-amber-500/50 transition font-bold"
+                />
+              </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm font-semibold text-muted-foreground block mb-1">{isAr ? 'كلفة الشراء للوحدة ($)' : 'Cost Per Unit ($)'}</label>
+                  <label className="text-sm font-semibold text-muted-foreground block mb-1">{isAr ? 'كلفة الشراء للوحدة (د.أ)' : 'Cost Per Unit (JOD)'}</label>
                   <input
                     type="number"
                     step="any"
@@ -910,32 +949,136 @@ export default function InventoryPage() {
             </div>
 
             <form onSubmit={handleSaveStockAdjust} className="space-y-4">
-              <div>
-                <label className="text-sm font-semibold text-muted-foreground block mb-1">{isAr ? 'صفة وطبيعة الحركة' : 'Transaction nature'}</label>
-                <select
-                  value={stockForm.type}
-                  onChange={(e) => setStockForm({ ...stockForm, type: e.target.value })}
-                  className="w-full bg-muted/40 text-foreground ring-1 ring-border rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-amber-500/50 transition"
-                >
-                  <option value="Purchase">{isAr ? 'شراء وتوريد' : 'Purchase restock'}</option>
-                  <option value="Adjustment">{isAr ? 'تسوية جرد دوري' : 'Manual adjustment'}</option>
-                </select>
+              <div className="space-y-1.5">
+                <label className="text-sm font-semibold text-muted-foreground block">
+                  {isAr ? 'صفة وطبيعة الحركة' : 'Transaction nature'}
+                </label>
+                <div className="grid grid-cols-2 gap-2 bg-muted/40 p-1 rounded-xl border border-border/50">
+                  <button
+                    type="button"
+                    onClick={() => setStockForm({ ...stockForm, type: 'Purchase' })}
+                    className={`flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-bold transition-all ${
+                      stockForm.type === 'Purchase'
+                        ? 'bg-amber-600 text-white shadow-sm font-extrabold ring-1 ring-amber-500/20'
+                        : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
+                    }`}
+                  >
+                    <span className="text-sm font-black">📥</span>
+                    {isAr ? 'شراء وتوريد جديد' : 'Purchase restock'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!hasActiveSession) {
+                        toast.error(isAr ? 'عذراً، لا توجد جلسة جرد مفتوحة حالياً. يرجى البدء بفتح جلسة جرد أولاً من قسم (جرد المستودعات)' : 'Sorry, no active inventory session. Please open an inventory count session first from the Inventory Audit section.');
+                        return;
+                      }
+                      setStockForm({ ...stockForm, type: 'Adjustment' });
+                    }}
+                    className={`flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-bold transition-all ${
+                      stockForm.type === 'Adjustment'
+                        ? 'bg-amber-600 text-white shadow-sm font-extrabold ring-1 ring-amber-500/20'
+                        : `text-muted-foreground hover:bg-muted/60 hover:text-foreground ${!hasActiveSession ? 'opacity-50 cursor-not-allowed' : ''}`
+                    }`}
+                  >
+                    <span className="text-sm font-black">📋</span>
+                    {isAr ? 'تسوية جرد دوري' : 'Manual adjustment'}
+                  </button>
+                </div>
+                {!hasActiveSession && (
+                  <div className="text-[11px] text-rose-600 font-semibold bg-rose-50 dark:bg-rose-950/20 px-3 py-1.5 rounded-xl border border-rose-100 dark:border-rose-950/40 flex items-center gap-1.5 mt-1.5 animate-in fade-in zoom-in-95">
+                    <span>⚠️</span>
+                    <span>{isAr ? 'خيار التسوية معطل لعدم وجود جلسة جرد تفصيلية مفتوحة.' : 'Adjustment option is locked: no active audit session.'}</span>
+                  </div>
+                )}
               </div>
+
+              {stockForm.type === 'Adjustment' && (
+                <div className="bg-stone-50 dark:bg-stone-900 border border-stone-200/50 rounded-2xl p-3.5 space-y-2 text-xs">
+                  <div className="flex justify-between text-stone-600 dark:text-stone-300">
+                    <span>{isAr ? 'الرصيد الدفتري الحالي (بالنظام):' : 'Current Book Stock (System):'}</span>
+                    <span className="font-bold">{selectedIngredient.currentStock} {selectedIngredient.unit}</span>
+                  </div>
+                  <div className="flex justify-between text-stone-600 dark:text-stone-300">
+                    <span>{isAr ? 'الرصيد الفعلي المدخل بعد العد:' : 'Physical Stock Entered:'}</span>
+                    <span className="font-bold text-amber-600">
+                      {stockForm.quantity === '' ? '0' : stockForm.quantity} {selectedIngredient.unit}
+                    </span>
+                  </div>
+                  <hr className="border-stone-100 dark:border-stone-800" />
+                  {(() => {
+                    const enteredStr = String(stockForm.quantity);
+                    const enteredNum = parseFloat(enteredStr);
+                    if (enteredStr === '' || isNaN(enteredNum)) {
+                      return (
+                        <div className="text-center text-stone-500 py-1">
+                          {isAr ? '💡 اكتب الكمية المتواجدة الآن لحساب الفارق تلقائياً' : '💡 Please type physical quantity below'}
+                        </div>
+                      );
+                    }
+                    const diff = enteredNum - selectedIngredient.currentStock;
+                    if (diff < 0) {
+                      return (
+                        <div className="flex justify-between items-center text-rose-600 font-bold">
+                          <span>{isAr ? '⚠️ عجز / استهلاك المخزون النظري:' : '⚠️ Deficit / Physical Deduction:'}</span>
+                          <span className="px-2 py-0.5 bg-rose-50 dark:bg-rose-950/20 rounded-md font-mono text-xs">
+                            {diff.toFixed(2)} {selectedIngredient.unit}
+                          </span>
+                        </div>
+                      );
+                    } else if (diff > 0) {
+                      return (
+                        <div className="flex justify-between items-center text-emerald-600 font-bold">
+                          <span>{isAr ? '📈 فائض / زيادة كمية مضافة:' : '📈 Surplus / Added Quantity:'}</span>
+                          <span className="px-2 py-0.5 bg-emerald-50 dark:bg-emerald-950/20 rounded-md font-mono text-xs">
+                            +{diff.toFixed(2)} {selectedIngredient.unit}
+                          </span>
+                        </div>
+                      );
+                    } else {
+                      return (
+                        <div className="flex justify-between items-center text-stone-500 font-bold">
+                          <span>{isAr ? '✅ مطابق تماماً للرصيد المسجل:' : '✅ Exact Match (No diff):'}</span>
+                          <span className="px-2 py-0.5 bg-stone-100 dark:bg-stone-800 rounded-md font-mono text-xs">0.00</span>
+                        </div>
+                      );
+                    }
+                  })()}
+                </div>
+              )}
 
               <div>
                 <label className="text-sm font-semibold text-muted-foreground block mb-1">
                   {stockForm.type === 'Purchase' 
                     ? (isAr ? 'كمية الشراء المضافة' : 'Added stock amount') 
-                    : (isAr ? 'مقدار التعديل (سالب أو موجب)' : 'Adjustment quantity (+ or -)')}
+                    : (isAr ? 'الكمية الفعلية المتواجدة حالياً بالمخازن' : 'Actual current physical stock on hand')}
                 </label>
                 <input
-                  type="number"
-                  step="any"
+                  type="text"
+                  inputMode="decimal"
                   required
-                  placeholder={stockForm.type === 'Purchase' ? "e.g. 5.5" : "e.g. -2 or +2"}
-                  value={stockForm.quantity === 0 ? '' : stockForm.quantity}
-                  onChange={(e) => setStockForm({ ...stockForm, quantity: parseFloat(e.target.value) || 0 })}
-                  className="w-full bg-muted/40 text-foreground ring-1 ring-border rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-amber-500/50 transition font-mono"
+                  placeholder={
+                    stockForm.type === 'Purchase' 
+                      ? "e.g. 5.5" 
+                      : (isAr ? "افتح الرفوف واكتب الكمية الموجودة الآن.." : "e.g. 100")
+                  }
+                  value={stockForm.quantity}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    // Standardize digits so Arabic/Persian map beautifully
+                    let normalized = val
+                      .replace(/[٠-٩]/g, (d) => String.fromCharCode(d.charCodeAt(0) - 1632 + 48))
+                      .replace(/[۰-۹]/g, (d) => String.fromCharCode(d.charCodeAt(0) - 1776 + 48));
+                    
+                    // Sanitize input to only permit digits and a single optional decimal dot
+                    const parts = normalized.split('.');
+                    if (parts.length > 2) {
+                      normalized = parts[0] + '.' + parts.slice(1).join('');
+                    }
+                    const sanitized = normalized.replace(/[^0-9.]/g, '');
+                    setStockForm({ ...stockForm, quantity: sanitized });
+                  }}
+                  className="w-full bg-muted/40 text-foreground ring-1 ring-border rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-amber-500/50 transition font-mono font-bold"
                 />
               </div>
 
@@ -1127,9 +1270,8 @@ export default function InventoryPage() {
 
                         {/* Unit Cost Badge */}
                         <div className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-secondary border border-border/30 text-stone-700 dark:text-stone-300 text-[11px] font-semibold">
-                          <DollarSign className="h-3.5 w-3.5" />
                           <span>{isAr ? 'تكلفة الوحدة:' : 'Unit Cost:'}</span>
-                          <span className="font-mono">${selectedIng.cost.toFixed(2)}</span>
+                          <span className="font-mono font-bold text-stone-900 dark:text-stone-100">{selectedIng.cost.toFixed(2)} {isAr ? 'د.أ' : 'JOD'}</span>
                         </div>
 
                         {/* Supplier if available */}

@@ -422,7 +422,7 @@ export default function POSPage() {
                 <div className="flex-1 p-3 flex flex-col text-left rtl:text-right">
                    <h3 className="font-bold text-xs leading-tight text-stone-800 line-clamp-2 h-8 mb-1">{product.name}</h3>
                    <div className="mt-auto flex items-center justify-between">
-                     <span className="text-primary font-black text-sm">${product.price.toFixed(2)}</span>
+                     <span className="text-primary font-black text-xs">{product.price.toFixed(2)} {t('SAR')}</span>
                      <div className="w-7 h-7 rounded-xl bg-orange-100 text-primary flex items-center justify-center shadow-sm group-hover:bg-primary group-hover:text-white transition-colors">
                         <Plus className="w-4 h-4" />
                      </div>
@@ -491,10 +491,10 @@ export default function POSPage() {
                <div className="flex justify-between items-start">
                  <div>
                    <h4 className="font-medium pr-6 rtl:pr-0 rtl:pl-6 text-stone-600">{item.name}</h4>
-                   <p className="text-xs text-stone-500 mt-0.5">{item.quantity}x • ${item.price.toFixed(2)}</p>
+                   <p className="text-xs text-stone-500 mt-0.5">{item.quantity}x • {item.price.toFixed(2)} {t('SAR')}</p>
                    {item.notes && <p className="text-xs text-stone-400 mt-0.5">{item.notes}</p>}
                  </div>
-                 <span className="font-medium text-stone-600">${(item.price * item.quantity).toFixed(2)}</span>
+                 <span className="font-medium text-stone-600">{(item.price * item.quantity).toFixed(2)} {t('SAR')}</span>
                </div>
             </div>
           ))}
@@ -506,7 +506,7 @@ export default function POSPage() {
                    <h4 className="font-medium pr-6 rtl:pr-0 rtl:pl-6">{item.name}</h4>
                    {item.notes && <p className="text-xs text-muted-foreground mt-0.5">{item.notes}</p>}
                  </div>
-                 <span className="font-medium">${(item.price * item.quantity).toFixed(2)}</span>
+                 <span className="font-medium">{(item.price * item.quantity).toFixed(2)} {t('SAR')}</span>
                </div>
                <div className="flex items-center justify-between">
                  <div className="flex items-center space-x-3 rtl:space-x-reverse bg-orange-100/50 rounded-full px-2 py-1">
@@ -541,15 +541,15 @@ export default function POSPage() {
           <div className="space-y-2 text-sm">
             <div className="flex justify-between text-muted-foreground">
               <span>{t('Total Items Cost')}</span>
-              <span>${subtotal.toFixed(2)}</span>
+              <span>{subtotal.toFixed(2)} {t('SAR')}</span>
             </div>
             <div className="flex justify-between text-muted-foreground">
               <span>{t('Tax')} ({taxRate}%)</span>
-              <span>${tax.toFixed(2)}</span>
+              <span>{tax.toFixed(2)} {t('SAR')}</span>
             </div>
             <div className="flex justify-between text-xl font-light text-foreground pt-2 border-t border-orange-300">
               <span>{t('Total Bill')}</span>
-              <span className="text-primary font-medium">${total.toFixed(2)}</span>
+              <span className="text-primary font-medium">{total.toFixed(2)} {t('SAR')}</span>
             </div>
           </div>
 
@@ -622,9 +622,9 @@ export default function POSPage() {
                       <div className="flex flex-col flex-1 pr-4 text-left rtl:text-right">
                         <span className="font-bold flex justify-between">
                           <span>{item.name}</span>
-                          <span>${(item.price * item.quantity).toFixed(2)}</span>
+                          <span>{(item.price * item.quantity).toFixed(2)} {t('SAR')}</span>
                         </span>
-                        <span className="text-[10px] text-stone-400 font-bold">{item.quantity} x ${item.price.toFixed(2)}</span>
+                        <span className="text-[10px] text-stone-400 font-bold">{item.quantity} x {item.price.toFixed(2)} {t('SAR')}</span>
                       </div>
                     </div>
                   ))}
@@ -633,15 +633,15 @@ export default function POSPage() {
                 <div className="border-t border-dashed border-stone-200 pt-4 space-y-2 text-xs text-stone-600 font-mono">
                   <div className="flex justify-between">
                     <span>{t('Subtotal')}</span>
-                    <span>${subtotal.toFixed(2)}</span>
+                    <span>{subtotal.toFixed(2)} {t('SAR')}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>{t('Tax')} ({taxRate || 10}%)</span>
-                    <span>${tax.toFixed(2)}</span>
+                    <span>{tax.toFixed(2)} {t('SAR')}</span>
                   </div>
                   <div className="flex justify-between font-bold text-base pt-3 border-t border-stone-100 text-stone-900">
                     <span>{t('Total')}</span>
-                    <span>${total.toFixed(2)}</span>
+                    <span>{total.toFixed(2)} {t('SAR')}</span>
                   </div>
                 </div>
 

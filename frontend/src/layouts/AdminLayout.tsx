@@ -14,7 +14,8 @@ import {
   MonitorPlay,
   Lock,
   Clock,
-  BookOpen
+  BookOpen,
+  ClipboardCheck
 } from 'lucide-react';
 import { cn } from '@/utils/utils';
 import LockScreen from '@/components/LockScreen';
@@ -38,6 +39,7 @@ export default function AdminLayout() {
   const navItems = [
     { name: t('Dashboard'), path: '/admin/dashboard', icon: LayoutDashboard },
     { name: t('Inventory'), path: '/admin/inventory', icon: Package },
+    { name: t('Inventory Audit') || 'جرد المخزون', path: '/admin/inventory-audit', icon: ClipboardCheck },
     { name: t('Recipes & Production'), path: '/admin/recipes', icon: BookOpen },
     { name: t('Employees'), path: '/admin/employees', icon: Users },
     { name: t('Payroll'), path: '/admin/payroll', icon: WalletCards },

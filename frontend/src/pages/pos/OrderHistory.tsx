@@ -476,7 +476,7 @@ export default function OrderHistory() {
 
                           <div className="flex flex-col items-end">
                             <span className="text-[10px] text-stone-400 uppercase tracking-widest font-bold mb-1">{t('Total Amount') || 'Total Amount'}</span>
-                            <div className="text-xl font-bold text-primary">${ticketTotal.toFixed(2)}</div>
+                            <div className="text-xl font-bold text-primary">{ticketTotal.toFixed(2)} {isAr ? 'د.أ' : 'JOD'}</div>
                           </div>
 
                           <div className={cn(
@@ -511,7 +511,7 @@ export default function OrderHistory() {
                                           <span className="font-medium">{orderItem.name}</span>
                                           {orderItem.notes && <span className="text-stone-400 text-xs italic">({orderItem.notes})</span>}
                                         </div>
-                                        <span className="font-mono text-stone-500">${(orderItem.price * orderItem.quantity).toFixed(2)}</span>
+                                        <span className="font-mono text-stone-500">{(orderItem.price * orderItem.quantity).toFixed(2)} {isAr ? 'د.أ' : 'JOD'}</span>
                                       </div>
                                     ))}
                                   </div>
@@ -651,7 +651,7 @@ export default function OrderHistory() {
                                ticket.status === 'CANCELLED' ? 'ملغي' : ticket.status
                              ) : ticket.status}
                            </span>
-                           <span className="text-2xl font-black text-stone-900 tracking-tighter">${ticketTotal.toFixed(2)}</span>
+                           <span className="text-2xl font-black text-stone-900 tracking-tighter">{ticketTotal.toFixed(2)} {isAr ? 'د.أ' : 'JOD'}</span>
                          </div>
                       </div>
 
@@ -660,7 +660,7 @@ export default function OrderHistory() {
                           {ticket.items.map((it, idx) => (
                             <div key={idx} className="flex justify-between">
                               <span className="text-stone-600 font-medium">{it.quantity}x {it.name}</span>
-                              <span className="font-mono text-stone-400">${(it.price * it.quantity).toFixed(2)}</span>
+                              <span className="font-mono text-stone-400">{(it.price * it.quantity).toFixed(2)} {isAr ? 'د.أ' : 'JOD'}</span>
                             </div>
                           ))}
                         </div>
@@ -796,9 +796,9 @@ export default function OrderHistory() {
                         <div className="flex flex-col flex-1 pr-4 text-left rtl:text-right">
                           <span className="font-bold flex justify-between">
                             <span>{item.name}</span>
-                            <span>${(item.price * item.quantity).toFixed(2)}</span>
+                            <span>{(item.price * item.quantity).toFixed(2)} {isAr ? 'د.أ' : 'JOD'}</span>
                           </span>
-                          <span className="text-[10px] text-stone-400 font-bold">{item.quantity} x ${item.price.toFixed(2)}</span>
+                          <span className="text-[10px] text-stone-400 font-bold">{item.quantity} x {item.price.toFixed(2)} {isAr ? 'د.أ' : 'JOD'}</span>
                         </div>
                       </div>
                     ))}
@@ -807,15 +807,15 @@ export default function OrderHistory() {
                   <div className="border-t-2 border-dashed border-stone-200 pt-4 space-y-2 text-xs text-stone-600">
                     <div className="flex justify-between">
                       <span>{t('Subtotal')}</span>
-                      <span>${receiptOrder.subtotal.toFixed(2)}</span>
+                      <span>{receiptOrder.subtotal.toFixed(2)} {isAr ? 'د.أ' : 'JOD'}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>{t('Tax')} ({taxRate || 10}%)</span>
-                      <span>${receiptOrder.tax.toFixed(2)}</span>
+                      <span>{receiptOrder.tax.toFixed(2)} {isAr ? 'د.أ' : 'JOD'}</span>
                     </div>
                     <div className="flex justify-between font-bold text-base pt-3 border-t border-stone-100 text-stone-900">
                       <span>{t('Total')}</span>
-                      <span>${receiptOrder.total.toFixed(2)}</span>
+                      <span>{receiptOrder.total.toFixed(2)} {isAr ? 'د.أ' : 'JOD'}</span>
                     </div>
                   </div>
                   
@@ -850,6 +850,7 @@ export default function OrderHistory() {
 }
 
 function HistoryListItem({ item, t, isExpanded, onToggle, formatDate, formatTime, onViewReceipt }: any) {
+  const isAr = t('SAR') === 'د.أ';
   return (
     <div 
       className={cn(
@@ -894,7 +895,7 @@ function HistoryListItem({ item, t, isExpanded, onToggle, formatDate, formatTime
            <div className="flex flex-col items-end">
              <span className="text-[10px] text-stone-400 uppercase tracking-widest font-bold mb-1">{t('Total Amount')}</span>
              <div className="text-xl font-bold text-primary">
-               ${item.total.toFixed(2)}
+               {item.total.toFixed(2)} {isAr ? 'د.أ' : 'JOD'}
              </div>
            </div>
 
@@ -928,7 +929,7 @@ function HistoryListItem({ item, t, isExpanded, onToggle, formatDate, formatTime
                         <span className="w-6 h-6 rounded-lg bg-stone-100 flex items-center justify-center text-[10px] font-bold text-stone-500">{orderItem.quantity}x</span>
                         <span className="font-medium">{orderItem.name}</span>
                       </div>
-                      <span className="font-mono text-stone-500">${(orderItem.price * orderItem.quantity).toFixed(2)}</span>
+                      <span className="font-mono text-stone-500">{(orderItem.price * orderItem.quantity).toFixed(2)} {isAr ? 'د.أ' : 'JOD'}</span>
                     </div>
                   ))}
                 </div>
@@ -967,15 +968,15 @@ function HistoryListItem({ item, t, isExpanded, onToggle, formatDate, formatTime
                   <div className="bg-white rounded-2xl p-6 border border-stone-200 space-y-3">
                      <div className="flex justify-between text-sm">
                        <span className="text-stone-400">{t('Subtotal')}</span>
-                       <span className="font-bold">${item.subtotal.toFixed(2)}</span>
+                       <span className="font-bold">{item.subtotal.toFixed(2)} {isAr ? 'د.أ' : 'JOD'}</span>
                      </div>
                      <div className="flex justify-between text-sm">
                        <span className="text-stone-400">{t('Tax')}</span>
-                       <span className="font-bold">${item.tax.toFixed(2)}</span>
+                       <span className="font-bold">{item.tax.toFixed(2)} {isAr ? 'د.أ' : 'JOD'}</span>
                      </div>
                      <div className="pt-3 border-t border-stone-100 flex justify-between">
                        <span className="font-bold text-lg">{t('Total')}</span>
-                       <span className="font-bold text-lg text-primary">${item.total.toFixed(2)}</span>
+                       <span className="font-bold text-lg text-primary">{item.total.toFixed(2)} {isAr ? 'د.أ' : 'JOD'}</span>
                      </div>
                      {item.paymentMethod && (
                        <div className="mt-2 pt-2 border-t border-stone-50 flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-stone-400">
@@ -1002,6 +1003,7 @@ function HistoryListItem({ item, t, isExpanded, onToggle, formatDate, formatTime
 }
 
 function HistoryGridCard({ item, t, formatDate, formatTime, onViewReceipt }: any) {
+  const isAr = t('SAR') === 'د.أ';
   return (
     <div className="bg-white rounded-[2rem] border border-stone-200 p-8 shadow-sm flex flex-col relative overflow-hidden group hover:border-primary/20 transition-all hover:shadow-xl hover:shadow-primary/5">
        <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500" />
@@ -1012,7 +1014,7 @@ function HistoryGridCard({ item, t, formatDate, formatTime, onViewReceipt }: any
           </div>
           <div className="flex flex-col items-end">
             <span className="text-[10px] text-stone-400 uppercase tracking-widest font-bold mb-1">{t('Order Total')}</span>
-            <span className="text-2xl font-black text-primary tracking-tighter">${item.total.toFixed(2)}</span>
+            <span className="text-2xl font-black text-primary tracking-tighter">{item.total.toFixed(2)} {isAr ? 'د.أ' : 'JOD'}</span>
           </div>
        </div>
 

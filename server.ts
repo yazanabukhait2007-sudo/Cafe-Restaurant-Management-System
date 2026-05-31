@@ -10,6 +10,7 @@ import tableRoutes from "./server/routes/tables.ts";
 import orderRoutes from "./server/routes/orders.ts";
 import inventoryRoutes from "./server/routes/inventory.ts";
 import recipeRoutes from "./server/routes/recipes.ts";
+import inventoryCountRoutes from "./server/routes/inventoryCount.ts";
 
 dotenv.config();
 
@@ -84,6 +85,7 @@ async function startServer() {
   app.use("/api/orders", orderRoutes);
   app.use("/api/inventory", inventoryRoutes);
   app.use("/api/recipes", recipeRoutes);
+  app.use("/api/inventory-counts", inventoryCountRoutes);
 
   // API Routes (Phase 2 will implement these)
   app.get("/api/health", (req, res) => {

@@ -12,6 +12,10 @@ async function main() {
     "tables:manage",
     "billing:process",
     "menu:manage",
+    "inventory:count:create",
+    "inventory:count:edit",
+    "inventory:count:commit",
+    "inventory:count:cancel",
   ];
 
   // Upsert all permissions first just in case
@@ -25,7 +29,10 @@ async function main() {
 
   const roleDefinitions = [
     { name: "Owner", perms: permissionNames },
-    { name: "Manager", perms: ["orders:view", "orders:edit", "inventory:view", "employees:view", "reports:view", "tables:manage", "menu:manage"] },
+    { name: "Manager", perms: [
+      "orders:view", "orders:edit", "inventory:view", "employees:view", "reports:view", "tables:manage", "menu:manage",
+      "inventory:count:create", "inventory:count:edit", "inventory:count:commit", "inventory:count:cancel"
+    ] },
     { name: "Cashier", perms: ["orders:create", "orders:view", "billing:process"] },
     { name: "Waiter", perms: ["orders:create", "orders:view", "tables:manage"] },
     { name: "Kitchen", perms: ["orders:view"] },

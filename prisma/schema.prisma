@@ -23,6 +23,7 @@ model User {
   notifications Notification[]
   orderStatusHistories OrderStatusHistory[]
   inventoryTransactions InventoryTransaction[]
+  inventoryCountSessions InventoryCountSession[]
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -351,6 +352,7 @@ model Ingredient {
   recipeItems   ProductIngredient[]
   usedInRecipes RecipeIngredient[]
   transactions  InventoryTransaction[]
+  inventoryCountItems InventoryCountItem[]
   createdAt     DateTime               @default(now())
   updatedAt     DateTime               @updatedAt
 }
@@ -499,3 +501,54 @@ model OrderStatusHistory {
   @@index([orderId])
   @@index([userId])
 }
+
+model InventoryCountSession {
+  id           String                 @id @default(cuid())
+  name         String
+  countDate    DateTime               @default(now())
+  status       String                 @default("Draft") // Draft, InProgress, Completed, Cancelled
+  userId       String
+  user         User                   @relation(fields: [userId], references: [id])
+  items        InventoryCountItem[]
+  snapshots    InventoryCountSnapshot[]
+  createdAt    DateTime               @default(now())
+  updatedAt    DateTime               @updatedAt
+
+  @@index([userId])
+}
+
+model InventoryCountItem {
+  id            String                @id @default(cuid())
+  sessionId     String
+  session       InventoryCountSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  ingredientId  String
+  ingredient    Ingredient            @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+  expectedStock Float
+  actualStock   Float?
+  difference    Float?
+  differenceValue Float?
+  reason        String?               // e.g., "هدر", "تلف", "سرقة", "خطأ إدخال", "خطأ جرد", "أخرى"
+  notes         String?
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+
+  @@index([sessionId])
+  @@index([ingredientId])
+}
+
+model InventoryCountSnapshot {
+  id             String                @id @default(cuid())
+  sessionId      String
+  session        InventoryCountSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  ingredientId   String
+  ingredientName String
+  unit           String
+  expectedStock  Float
+  actualStock    Float
+  cost           Float
+  valueDifference Float
+  createdAt      DateTime              @default(now())
+
+  @@index([sessionId])
+}
+

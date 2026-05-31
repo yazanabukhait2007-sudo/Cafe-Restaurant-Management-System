@@ -11,7 +11,8 @@ export default function CustomerView() {
   const { tableToken } = useParams<{ tableToken: string }>();
   const tables = usePosStore(state => state.tables);
   const { cafeName, taxRate } = useSettingsStore();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isAr = i18n?.language === 'ar' || document.documentElement.dir === 'rtl';
   
   const [showReview, setShowReview] = useState(false);
   const [rating, setRating] = useState(0);
@@ -155,9 +156,9 @@ export default function CustomerView() {
                   <div className="flex-1 pr-4">
                     <h3 className="font-semibold text-stone-800">{item.name}</h3>
                     {item.notes && <p className="text-xs text-stone-500 mt-1">{item.notes}</p>}
-                    <p className="text-sm font-medium text-stone-500 mt-1">{item.quantity} x ${item.price.toFixed(2)}</p>
+                    <p className="text-sm font-medium text-stone-500 mt-1">{item.quantity} x {item.price.toFixed(2)} {isAr ? 'د.أ' : 'JOD'}</p>
                   </div>
-                  <span className="font-bold text-stone-800">${(item.quantity * item.price).toFixed(2)}</span>
+                  <span className="font-bold text-stone-800">{(item.quantity * item.price).toFixed(2)} {isAr ? 'د.أ' : 'JOD'}</span>
                 </div>
               ))
             )}
@@ -167,15 +168,15 @@ export default function CustomerView() {
             <div className="mt-6 pt-6 border-t border-dashed border-stone-200 space-y-3">
               <div className="flex justify-between text-stone-500">
                 <span>{t('Subtotal')}</span>
-                <span>${subtotal.toFixed(2)}</span>
+                <span>{subtotal.toFixed(2)} {isAr ? 'د.أ' : 'JOD'}</span>
               </div>
               <div className="flex justify-between text-stone-500">
                 <span>{t('Tax')} ({taxRate}%)</span>
-                <span>${tax.toFixed(2)}</span>
+                <span>{tax.toFixed(2)} {isAr ? 'د.أ' : 'JOD'}</span>
               </div>
               <div className="flex justify-between text-lg font-bold text-stone-900 border-t border-stone-200 pt-3 mt-3">
                 <span>{t('Total Due')}</span>
-                <span>${total.toFixed(2)}</span>
+                <span>{total.toFixed(2)} {isAr ? 'د.أ' : 'JOD'}</span>
               </div>
             </div>
           )}

@@ -7,12 +7,13 @@ import { useTranslation } from 'react-i18next';
 
 export default function DashboardPage() {
   const tickets = usePosStore(state => state.tickets);
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isAr = i18n.language === 'ar' || document.documentElement.dir === 'rtl';
   
   const stats = [
-    { title: t("Total Revenue"), value: "$4,231.89", trend: "+20% from last month", icon: DollarSign, color: "text-amber-500" },
+    { title: t("Total Revenue"), value: isAr ? "4,231.89 د.أ" : "4,231.89 JOD", trend: "+20% from last month", icon: DollarSign, color: "text-amber-500" },
     { title: t("Active Orders"), value: tickets.length.toString(), trend: `${tickets.length} pending in KDS`, icon: Activity, color: "text-emerald-500" },
-    { title: t("Avg Ticket Size"), value: "$34.50", trend: "+5% from last week", icon: ShoppingBag, color: "text-blue-500" },
+    { title: t("Avg Ticket Size"), value: isAr ? "34.50 د.أ" : "34.50 JOD", trend: "+5% from last week", icon: ShoppingBag, color: "text-blue-500" },
     { title: t("Total Customers"), value: "142", trend: "Peak hours active", icon: Users, color: "text-purple-500" }
   ];
 
@@ -67,7 +68,7 @@ export default function DashboardPage() {
           <CardContent className="border-t border-amber-900/10/50 pt-4">
             <div className="space-y-6">
                {[
-                 { action: "Order #4023", details: "Paid via Credit Card", amount: "$45.00", time: "2 min ago" },
+                 { action: "Order #4023", details: "Paid via Credit Card", amount: isAr ? "45.00 د.أ" : "45.00 JOD", time: "2 min ago" },
                  { action: "Table 4 Assigned", details: "Waiter: Sarah M.", amount: "-", time: "15 min ago" },
                  { action: "Low Stock Alert", details: "Coffee Beans Espresso Roast", amount: "2kg left", time: "1 hr ago" },
                  { action: "Shift Started", details: "Morning shift opened", amount: "-", time: "4 hrs ago" },
@@ -103,10 +104,10 @@ export default function DashboardPage() {
            <CardContent className="p-0">
               <div className="divide-y divide-stone-100">
                 {[
-                  { name: t('V60 Special Edition'), margin: '84%', profit: '$8.50', count: 142 },
-                  { name: t('Iced Latte'), margin: '78%', profit: '$4.20', count: 521 },
-                  { name: t('Americano'), margin: '75%', profit: '$3.50', count: 890 },
-                  { name: t('Flat White'), margin: '72%', profit: '$3.80', count: 412 },
+                  { name: t('V60 Special Edition'), margin: '84%', profit: isAr ? '8.50 د.أ' : '8.50 JOD', count: 142 },
+                  { name: t('Iced Latte'), margin: '78%', profit: isAr ? '4.20 د.أ' : '4.20 JOD', count: 521 },
+                  { name: t('Americano'), margin: '75%', profit: isAr ? '3.50 د.أ' : '3.50 JOD', count: 890 },
+                  { name: t('Flat White'), margin: '72%', profit: isAr ? '3.80 د.أ' : '3.80 JOD', count: 412 },
                 ].map((item, i) => (
                   <div key={i} className="p-4 flex items-center justify-between hover:bg-stone-50 transition-colors">
                     <div className="flex flex-col">
@@ -137,10 +138,10 @@ export default function DashboardPage() {
            <CardContent className="p-0">
               <div className="divide-y divide-stone-100">
                 {[
-                  { name: t('Turkey Toastie'), margin: '22%', cost: '$8.50', trend: t('trend_cost_up') },
-                  { name: t('Avocado Sandwich'), margin: '28%', cost: '$9.20', trend: t('trend_cost_up_small') },
-                  { name: t('Pistachio Croissant'), margin: '31%', cost: '$4.10', trend: t('Stable') },
-                  { name: t('Grilled Cheese'), margin: '34%', cost: '$3.80', trend: t('Rising') },
+                  { name: t('Turkey Toastie'), margin: '22%', cost: isAr ? '8.50 د.أ' : '8.50 JOD', trend: t('trend_cost_up') },
+                  { name: t('Avocado Sandwich'), margin: '28%', cost: isAr ? '9.20 د.أ' : '9.20 JOD', trend: t('trend_cost_up_small') },
+                  { name: t('Pistachio Croissant'), margin: '31%', cost: isAr ? '4.10 د.أ' : '4.10 JOD', trend: t('Stable') },
+                  { name: t('Grilled Cheese'), margin: '34%', cost: isAr ? '3.80 د.أ' : '3.80 JOD', trend: t('Rising') },
                 ].map((item, i) => (
                   <div key={i} className="p-4 flex items-center justify-between hover:bg-stone-50 transition-colors">
                     <div className="flex flex-col">
@@ -152,7 +153,7 @@ export default function DashboardPage() {
                          <ArrowDownRight className="w-3 h-3" />
                          <span className="text-sm">{item.margin}</span>
                        </div>
-                       <p className="text-[10px] text-stone-400 font-bold uppercase tracking-widest">${item.cost} {t('Unit Cost')}</p>
+                       <p className="text-[10px] text-stone-400 font-bold uppercase tracking-widest">{item.cost} {t('Unit Cost')}</p>
                     </div>
                   </div>
                 ))}

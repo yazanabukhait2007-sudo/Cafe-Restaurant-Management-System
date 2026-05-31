@@ -20,6 +20,7 @@ import AttendancePage from "@/pages/admin/Attendance";
 import SettingsPage from "@/pages/admin/Settings";
 import ReportsPage from "@/pages/admin/Reports";
 import RecipesPage from "@/pages/admin/Recipes";
+import InventoryAuditPage from "@/pages/admin/InventoryAudit";
 
 // POS Pages
 import POSPage from "@/pages/pos/POS";
@@ -75,6 +76,7 @@ export default function App() {
           <Route path="attendance" element={<AttendancePage />} />
           <Route path="reports" element={<ReportsPage />} />
           <Route path="recipes" element={<RecipesPage />} />
+          <Route path="inventory-audit" element={<InventoryAuditPage />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>
 

@@ -26,7 +26,8 @@ import { cn } from '@/utils/utils';
 import { toast } from 'sonner';
 
 export default function MenuManagement() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isAr = i18n?.language === 'ar' || document.documentElement.dir === 'rtl';
   const navigate = useNavigate();
   const products = usePosStore(state => state.products);
   const categories = usePosStore(state => state.categories);
@@ -264,7 +265,7 @@ export default function MenuManagement() {
                    <h3 className="font-bold text-xs leading-tight text-stone-800 line-clamp-2 h-8 mb-1">{product.name}</h3>
                    <div className="mt-auto flex items-center justify-between">
                      <span className={cn("font-black text-xs sm:text-sm", product.available === false ? "text-stone-400" : "text-primary")}>
-                       ${product.price.toFixed(2)}
+                       {product.price.toFixed(2)} {isAr ? 'د.أ' : 'JOD'}
                      </span>
                      
                      {/* Toggle Switch */}
@@ -441,7 +442,9 @@ export default function MenuManagement() {
                    <div className="space-y-2">
                      <label className="text-xs font-bold text-stone-400 uppercase tracking-widest px-1">{t('Price')}</label>
                      <div className="relative">
-                       <DollarSign className="absolute left-6 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
+                       <span className="absolute left-6 top-1/2 -translate-y-1/2 text-xs font-bold text-stone-500 font-sans">
+                         {isAr ? 'د.أ' : 'JOD'}
+                       </span>
                        <input 
                          type="number"
                          step="0.01"
@@ -451,7 +454,7 @@ export default function MenuManagement() {
                            ? setEditingProduct({ ...editingProduct, price: parseFloat(e.target.value) })
                            : setNewProduct({ ...newProduct, price: parseFloat(e.target.value) })
                          }
-                         className="w-full h-14 bg-stone-50 border border-stone-200 rounded-2xl pl-12 pr-6 focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all font-mono font-bold text-lg"
+                         className="w-full h-14 bg-stone-50 border border-stone-200 rounded-2xl pl-16 pr-6 focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all font-mono font-bold text-lg"
                        />
                      </div>
                    </div>

@@ -55,6 +55,7 @@ export default function TablesPage() {
 
   const { cafeName, taxRate } = useSettingsStore();
   const { t, i18n } = useTranslation();
+  const isAr = i18n?.language === 'ar' || document.documentElement.dir === 'rtl';
 
   const handleViewInvoice = (table: Table) => {
     setCheckoutTable(table);
@@ -416,9 +417,9 @@ export default function TablesPage() {
                           <div className="flex flex-col flex-1 pr-4">
                             <span className="font-bold flex justify-between">
                               <span>{item.name}</span>
-                              <span>${(item.price * item.quantity).toFixed(2)}</span>
+                              <span>{(item.price * item.quantity).toFixed(2)} {isAr ? 'د.أ' : 'JOD'}</span>
                             </span>
-                            <span className="text-[10px] text-stone-400 font-bold">{item.quantity} x ${item.price.toFixed(2)}</span>
+                            <span className="text-[10px] text-stone-400 font-bold">{item.quantity} x {item.price.toFixed(2)} {isAr ? 'د.أ' : 'JOD'}</span>
                           </div>
                         </div>
                       ))}
@@ -427,15 +428,15 @@ export default function TablesPage() {
                     <div className="border-t-2 border-dashed border-stone-200 pt-6 space-y-2 text-xs">
                       <div className="flex justify-between">
                         <span>{t('Subtotal')}</span>
-                        <span>${(checkoutTable.activeOrderTotal || 0).toFixed(2)}</span>
+                        <span>{(checkoutTable.activeOrderTotal || 0).toFixed(2)} {isAr ? 'د.أ' : 'JOD'}</span>
                       </div>
                       <div className="flex justify-between">
                         <span>{t('Tax')} ({taxRate}%)</span>
-                        <span>${((checkoutTable.activeOrderTotal || 0) * (taxRate / 100)).toFixed(2)}</span>
+                        <span>{((checkoutTable.activeOrderTotal || 0) * (taxRate / 100)).toFixed(2)} {isAr ? 'د.أ' : 'JOD'}</span>
                       </div>
                       <div className="flex justify-between font-bold text-lg pt-4 border-t border-stone-100">
                         <span>{t('Total')}</span>
-                        <span>${((checkoutTable.activeOrderTotal || 0) * (1 + taxRate / 100)).toFixed(2)}</span>
+                        <span>{((checkoutTable.activeOrderTotal || 0) * (1 + taxRate / 100)).toFixed(2)} {isAr ? 'د.أ' : 'JOD'}</span>
                       </div>
                     </div>
                     
@@ -588,7 +589,7 @@ export default function TablesPage() {
                             <option value="">{t('Select occupied table...')}</option>
                             {tables.filter(t => t.status === 'occupied').map(t => (
                               <option key={t.id} value={t.id}>
-                                {t.name} - ${(t.activeOrderTotal || 0).toFixed(2)}
+                                {t.name} - {(t.activeOrderTotal || 0).toFixed(2)} {isAr ? 'د.أ' : 'JOD'}
                               </option>
                             ))}
                           </select>
@@ -660,7 +661,7 @@ export default function TablesPage() {
                             <option value="">{t('Select source table...')}</option>
                             {tables.filter(t => t.status === 'occupied').map(t => (
                               <option key={t.id} value={t.id}>
-                                {t.name} - ${(t.activeOrderTotal || 0).toFixed(2)}
+                                {t.name} - {(t.activeOrderTotal || 0).toFixed(2)} {isAr ? 'د.أ' : 'JOD'}
                               </option>
                             ))}
                           </select>
@@ -681,7 +682,7 @@ export default function TablesPage() {
                             <option value="">{t('Select recipient table...')}</option>
                             {tables.filter(t => t.status === 'occupied' && t.id !== mergeSource).map(t => (
                               <option key={t.id} value={t.id}>
-                                {t.name} - ${(t.activeOrderTotal || 0).toFixed(2)}
+                                {t.name} - {(t.activeOrderTotal || 0).toFixed(2)} {isAr ? 'د.أ' : 'JOD'}
                               </option>
                             ))}
                           </select>
@@ -732,7 +733,7 @@ export default function TablesPage() {
                           <option value="">{t('Select active table...')}</option>
                           {tables.filter(t => t.status === 'occupied').map(t => (
                             <option key={t.id} value={t.id}>
-                              {t.name} - ${(t.activeOrderTotal || 0).toFixed(2)}
+                              {t.name} - {(t.activeOrderTotal || 0).toFixed(2)} {isAr ? 'د.أ' : 'JOD'}
                             </option>
                           ))}
                         </select>
@@ -775,7 +776,7 @@ export default function TablesPage() {
                                           <div>{item.name}</div>
                                           {item.notes && <div className="text-[10px] text-stone-400 italic">({item.notes})</div>}
                                         </td>
-                                        <td className="px-4 py-3 text-center font-mono">${item.price.toFixed(2)}</td>
+                                        <td className="px-4 py-3 text-center font-mono">{item.price.toFixed(2)} {isAr ? 'د.أ' : 'JOD'}</td>
                                         <td className="px-4 py-3 text-center font-bold text-stone-505">{item.quantity}</td>
                                         <td className="px-4 py-3 text-center">
                                           <div className="flex items-center justify-center gap-2">
@@ -820,7 +821,7 @@ export default function TablesPage() {
                                 <div className="text-[10px] text-stone-400 mt-1">*{i18n.language === 'ar' || document.documentElement.dir === 'rtl' ? 'شامل ضريبة ضريبة القيمة المضافة المحسوبة' : 'Tax is calculated at overall settlement.'}</div>
                               </div>
                               <div className="text-right">
-                                <span className="text-2xl font-bold font-mono text-stone-900">${calculatedSplitTotal.toFixed(2)}</span>
+                                <span className="text-2xl font-bold font-mono text-stone-900">{calculatedSplitTotal.toFixed(2)} {isAr ? 'د.أ' : 'JOD'}</span>
                               </div>
                             </div>
 
@@ -1023,7 +1024,7 @@ export default function TablesPage() {
                        <div className="flex flex-col space-y-2 relative z-10 w-full mt-auto">
                          <div className="flex justify-between items-end">
                            <div className="flex flex-col">
-                             <span className="text-lg font-medium rtl:self-end">${((table.activeOrderTotal || 0) * (1 + taxRate / 100)).toFixed(2)}</span>
+                             <span className="text-lg font-medium rtl:self-end">{((table.activeOrderTotal || 0) * (1 + taxRate / 100)).toFixed(2)} {isAr ? 'د.أ' : 'JOD'}</span>
                              <span className={cn(
                                "text-xs opacity-70 rtl:self-end font-bold",
                                table.billPaid ? "text-green-700" : (table.billRequested ? "text-amber-700" : "")

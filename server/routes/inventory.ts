@@ -68,7 +68,7 @@ router.post("/ingredients", authenticate, authorize(["inventory:manage"]), async
       });
     }
 
-    res.status(211).json(ingredient);
+    res.status(201).json(ingredient);
   } catch (error: any) {
     res.status(500).json({ message: "Failed to create ingredient", error: error.message });
   }
@@ -289,6 +289,48 @@ router.post("/adjust", authenticate, authorize(["inventory:manage"]), async (req
         where: { id: ingredientId },
         data: { currentStock: afterQty }
       });
+
+      // Update any active inventory count sessions if this is an "Adjustment" type
+      if (type === "Adjustment") {
+        const activeSession = await tx.inventoryCountSession.findFirst({
+          where: {
+            status: {
+              in: ["Draft", "InProgress"]
+            }
+          },
+          include: {
+            items: true
+          }
+        });
+
+        if (activeSession) {
+          const matchingItem = activeSession.items.find(it => it.ingredientId === ingredientId);
+          if (matchingItem) {
+            const cost = dbIng.cost || 0;
+            const difference = afterQty - matchingItem.expectedStock;
+            const differenceValue = difference * cost;
+
+            await tx.inventoryCountItem.update({
+              where: { id: matchingItem.id },
+              data: {
+                actualStock: afterQty,
+                difference: parseFloat(difference.toFixed(4)),
+                differenceValue: parseFloat(differenceValue.toFixed(4)),
+                reason: note || "تسوية جرد دوري",
+                notes: "تم تسجيلها تلقائياً من صفحة تحديثات المستودع"
+              }
+            });
+
+            // Also update session status to InProgress if it was Draft
+            if (activeSession.status === "Draft") {
+              await tx.inventoryCountSession.update({
+                where: { id: activeSession.id },
+                data: { status: "InProgress" }
+              });
+            }
+          }
+        }
+      }
 
       await tx.inventoryTransaction.create({
         data: {

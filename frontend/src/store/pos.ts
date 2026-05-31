@@ -1049,7 +1049,7 @@ export const usePosStore = create<PosState>()(
         time: new Date().toISOString(),
         employee,
         operation: 'SPLIT',
-        description: `Split bill on table ${table.name}. Split total of $${splitTotal.toFixed(2)} finalized and closed.`,
+        description: `Split bill on table ${table.name}. Split total of ${splitTotal.toFixed(2)} JOD finalized and closed.`,
         details: {
           remainingItems: updatedActiveOrder.length,
           settledItemsCount: paidItems.length
